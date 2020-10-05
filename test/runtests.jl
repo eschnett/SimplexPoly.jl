@@ -179,9 +179,6 @@ end
         @test n + x == x
         @test x + n == x
         @test x + y == y + x
-        if !(x + (y + z) == (x + y) + z)
-            @show x y z (x + y) (y + z) (x + (y + z)) ((x + y) + z)
-        end
         @test x + (y + z) == (x + y) + z
         @test +x == x
 
@@ -224,10 +221,6 @@ end
             dx = deriv(x, dir)
             @test deriv(n, dir) == n
             @test deriv(e, dir) == n
-            if !(deriv(unit(Poly{D,T}, dir), dir) == e)
-                @show D T dir unit(Poly{D,T}, dir) deriv(unit(Poly{D,T}, dir),
-                                                         dir)
-            end
             @test deriv(unit(Poly{D,T}, dir), dir) == e
             @test deriv(x + y, dir) == deriv(x, dir) + deriv(y, dir)
             @test deriv(a * x, dir) == a * deriv(x, dir)
@@ -336,6 +329,71 @@ end
             @test (p * x) ∧ y == p * (x ∧ y)
             @test x ∧ (y * p) == (x ∧ y) * p
             @test (x + x′) ∧ y == x ∧ y + x′ ∧ y
+        end
+    end
+end
+
+@testset "Derivatives of polynomial forms D=$D" for D in 0:Dmax
+    T = Int
+
+    for iter in 1:100
+        Rx = rand(0:D)
+        Ry = rand(0:D)
+        x = rand(Form{D,Rx,Poly{D,T}})
+        y = rand(Form{D,Ry,Poly{D,T}})
+        a = T(rand(-10:10))
+
+        if Rx <= D - 1
+            @test deriv(a * x) == a * deriv(x)
+        end
+        if Rx + Ry <= D - 1
+            @test deriv(x ∧ y) == deriv(x) ∧ y + bitsign(Rx) * x ∧ deriv(y)
+        end
+        if Rx <= D - 2
+            @test iszero(deriv(deriv(x)))
+        end
+
+        if 1 <= Rx
+            @test koszul(a * x) == a * koszul(x)
+        end
+        if 1 <= min(Rx, Ry) && Rx + Ry <= D
+            @test koszul(x ∧ y) == koszul(x) ∧ y + bitsign(Rx) * x ∧ koszul(y)
+        end
+        if 2 <= Rx
+            @test iszero(koszul(koszul(x)))
+        end
+
+        if D >= 1
+            Rz = rand(0:D)
+            p = rand(0:5)
+            function mkterm()
+                dims = rand(1:D, p)
+                powers = zeros(D)
+                for d in dims
+                    powers[d] += 1
+                end
+                return Term{D,T}(SVector{D,Int}(powers), T(rand(-10:10)))
+            end
+            function mkpoly()
+                n = rand(0:5)
+                return Poly{D,T}(Term{D,T}[mkterm() for i in 1:n])
+            end
+            function mkform()
+                N = binomial(Val(D), Val(Rz))
+                return Form{D,Rz}(ntuple(_ -> mkpoly(), N))
+            end
+            z = mkform()
+
+            # Douglas Arnold, Richard Falk, Ragnar Winther, "Finite
+            # element exterior calculus, homological techniques, and
+            # applications", Acta Numerica 15, 1-155 (2006),
+            # DOI:10.1017/S0962492906210018, eqn. (3.9)
+            if 1 <= Rz <= D - 1
+                # This holds only for homogenous polynomial forms,
+                # i.e. forms where all polynomials have the same
+                # degree `p`
+                @test deriv(koszul(z)) + koszul(deriv(z)) == (Rz + p) * z
+            end
         end
     end
 end

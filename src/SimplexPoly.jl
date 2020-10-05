@@ -66,8 +66,8 @@ function deriv(term::Term{D,T}, dir::Int) where {D,T}
     D::Int
     @assert D >= 0
     @assert 1 <= dir <= D
-    term.powers[dir] == 0 && return zero(Term{D,T})
     p = term.powers[dir]
+    p == 0 && return zero(Term{D,T})
     return Term{D,T}(Base.setindex(term.powers, p - 1, dir), p * term.coeff)
 end
 
@@ -223,7 +223,7 @@ function deriv(f::Form{D,R,Poly{D,T}}) where {D,R,T}
         for dir in 1:D
             if !bits[dir]
                 parity = false
-                for d in (dir + 1):N
+                for d in 1:(dir - 1)
                     parity ⊻= bits[d]
                 end
                 s = bitsign(parity)
@@ -246,15 +246,15 @@ function koszul(f::Form{D,R,Poly{D,T}}) where {D,R,T}
     for n in 1:N
         bits = Forms.lin2bit(Val(D), Val(R), n)
         for dir in 1:D
-            if !bits[dir]
+            if bits[dir]
                 parity = false
                 for d in 1:(dir - 1)
                     parity ⊻= bits[d]
                 end
                 s = bitsign(parity)
-                rbits = Base.setindex(bits, true, dir)
+                rbits = Base.setindex(bits, false, dir)
                 rn = Forms.bit2lin(Val(D), Val(R - 1), rbits)
-                r = Base.setindex(r, r[rn] + s * deriv(f[n], dir), rn)
+                r = Base.setindex(r, r[rn] + s * koszul(f[n], dir), rn)
             end
         end
     end
@@ -281,16 +281,45 @@ end
 ################################################################################
 
 @computed struct Space{D,R,T}
-    polys::Vector{fulltype(Form{D,R,Poly{D,T}})}
+    forms::Vector{fulltype(Form{D,R,Poly{D,T}})}
 end
 
 Base.zero(::Type{<:Space{D,R,T}}) where {D,R,T} = Space{D,R,T}([])
+Base.zero(::Space{D,R,T}) where {D,R,T} = zero(Space{D,R,T})
+Base.iszero(space::Space) = isempty(space.forms)
+
+function DifferentialForms.unit(form::Form{D,R,Poly{D,T}}) where {D,R,T}
+    return Space{D,R,T}([form])
+end
+
+export tensorsum
+function DifferentialForms.tensorsum(space1::Space{D,R,T},
+                                     space2::Space{D,R,T}) where {D,R,T}
+    space = Space{D,R,T}([space1.forms; space2.forms])
+    @assert !any(iszero, space.forms)
+    @assert allunique(space.forms)
+    return space
+end
+
+function tensordiff end
+const ⊖ = tensordiff
+export tensordiff, ⊖
+function tensordiff(space1::Space{D,R,T}, space2::Space{D,R,T}) where {D,R,T}
+    forms2 = Set(space2.forms)
+    forms = fulltype(Form{D,R,Poly{D,T}})[]
+    for form in space1.forms
+        if form ∉ forms2
+            push!(forms, form)
+        end
+    end
+    return Space{D,R,T}(forms)
+end
 
 function basis(::Type{<:Space{D,R,T}}, p::Int) where {D,R,T}
     D::Int
+    R::Int
     @assert 0 <= R <= D
     @assert p >= 0
-
     polys = Poly{D,T}[]
     for i0 in
         CartesianIndex(ntuple(d -> 0, D)):CartesianIndex(ntuple(d -> p, D))
@@ -299,7 +328,6 @@ function basis(::Type{<:Space{D,R,T}}, p::Int) where {D,R,T}
             push!(polys, Poly{D,T}([Term{D,T}(i, one(T))]))
         end
     end
-
     N = length(Form{D,R})
     forms = fulltype(Form{D,R,Poly{D,T}})[zero(Form{D,R,Poly{D,T}})]
     for n in 1:N
@@ -311,13 +339,40 @@ function basis(::Type{<:Space{D,R,T}}, p::Int) where {D,R,T}
         end
         forms = newforms
     end
+    return
 
-    return Space{D,T}(forms)
+    return Space{D,R,T}(forms)
+end
+function
+
+deriv(space::Space{D,R,T}) where {D,R,T}
+    D::Int
+    R::Int
+    @assert 0 <= R < D
+    dforms = fulltype(Form{D,R,Poly{D,T}})[]
+    for form in space.forms
+        dform = deriv(form)
+        !iszero(dform) && push!(dforms, dform)
+    end
+    return dforms
+end
+function
+
+koszul(space::Space{D,R,T}) where {D,R,T}
+    D::Int
+    R::Int
+    @assert 0 < R <= D
+    κforms = fulltype(Form{D,R,Poly{D,T}})[]
+    for form in space.forms
+        κform = koszul(form)
+        !iszero(κform) && push!(κforms, κform)
+    end
+    return κforms
 end
 
-################################################################################
+function################################################################################
 
-function bernstein(::Type{<:Space{D,0,T}}, p::Int) where {D,T}
+bernstein(::Type{<:Space{D,0,T}}, p::Int) where {D,T}
     D::Int
     R = 0
     @assert 0 <= R <= D
@@ -333,8 +388,9 @@ function bernstein(::Type{<:Space{D,0,T}}, p::Int) where {D,T}
     end
     return Space{D,T}(polys)
 end
+function
 
-function bernstein(::Type{<:Space{D,R,T}}, p::Int) where {D,R,T}
+bernstein(::Type{<:Space{D,R,T}}, p::Int) where {D,R,T}
     D::Int
     R::Int
     @assert 0 <= R <= D
@@ -350,6 +406,4 @@ function bernstein(::Type{<:Space{D,R,T}}, p::Int) where {D,R,T}
     return Space{D,T}(polys)
 end
 
-################################################################################
-
-end
+end################################################################################
