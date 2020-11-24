@@ -343,9 +343,8 @@ function basis(::Type{<:Space{D,R,T}}, p::Int) where {D,R,T}
 
     return Space{D,R,T}(forms)
 end
-function
 
-deriv(space::Space{D,R,T}) where {D,R,T}
+function deriv(space::Space{D,R,T}) where {D,R,T}
     D::Int
     R::Int
     @assert 0 <= R < D
@@ -356,9 +355,8 @@ deriv(space::Space{D,R,T}) where {D,R,T}
     end
     return dforms
 end
-function
 
-koszul(space::Space{D,R,T}) where {D,R,T}
+function koszul(space::Space{D,R,T}) where {D,R,T}
     D::Int
     R::Int
     @assert 0 < R <= D
@@ -370,9 +368,9 @@ koszul(space::Space{D,R,T}) where {D,R,T}
     return κforms
 end
 
-function################################################################################
+################################################################################
 
-bernstein(::Type{<:Space{D,0,T}}, p::Int) where {D,T}
+function bernstein(::Type{<:Space{D,0,T}}, p::Int) where {D,T}
     D::Int
     R = 0
     @assert 0 <= R <= D
@@ -388,9 +386,8 @@ bernstein(::Type{<:Space{D,0,T}}, p::Int) where {D,T}
     end
     return Space{D,T}(polys)
 end
-function
 
-bernstein(::Type{<:Space{D,R,T}}, p::Int) where {D,R,T}
+function bernstein(::Type{<:Space{D,R,T}}, p::Int) where {D,R,T}
     D::Int
     R::Int
     @assert 0 <= R <= D
@@ -406,4 +403,4 @@ bernstein(::Type{<:Space{D,R,T}}, p::Int) where {D,R,T}
     return Space{D,T}(polys)
 end
 
-end################################################################################
+end
