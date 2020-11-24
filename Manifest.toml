@@ -15,9 +15,9 @@ uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 
 [[DifferentialForms]]
 deps = ["ComputedFieldTypes", "LinearAlgebra", "Random", "Reexport", "StaticArrays", "Test"]
-git-tree-sha1 = "391262513905762c03b728937d04d60ee601d0ed"
+git-tree-sha1 = "fd5ffc2c0cd99633643f778a453a8c4efcd3dafe"
 uuid = "9e54b8bf-1ae4-4c45-8656-f6b46e7970a3"
-version = "2.4.0"
+version = "2.5.0"
 
 [[Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
@@ -82,9 +82,9 @@ uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "016d1e1a00fabc556473b07161da3d39726ded35"
+git-tree-sha1 = "da4cf579416c81994afd6322365d00916c79b8ae"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "0.12.4"
+version = "0.12.5"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
