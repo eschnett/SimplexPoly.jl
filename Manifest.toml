@@ -15,9 +15,9 @@ uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 
 [[DifferentialForms]]
 deps = ["ComputedFieldTypes", "LinearAlgebra", "Random", "Reexport", "StaticArrays", "Test"]
-git-tree-sha1 = "fd5ffc2c0cd99633643f778a453a8c4efcd3dafe"
+git-tree-sha1 = "adc52addac94d15c219986665ec0fdbc13425c61"
 uuid = "9e54b8bf-1ae4-4c45-8656-f6b46e7970a3"
-version = "2.5.0"
+version = "2.7.0"
 
 [[Distributed]]
 deps = ["Random", "Serialization", "Sockets"]

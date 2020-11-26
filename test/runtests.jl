@@ -17,9 +17,11 @@ Random.seed!(0)
 ################################################################################
 
 # Random terms
+const maxrandpower = 5
 function Base.rand(rng::AbstractRNG,
                    ::Random.SamplerType{Term{D,T}}) where {D,T}
-    return Term{D,T}(SVector{D,Int}(rand(rng, 0:10, D)), T(rand(rng, -10:10)))
+    return Term{D,T}(SVector{D,Int}(rand(rng, 0:maxrandpower, D)),
+                     T(rand(rng, -10:10)))
 end
 
 @testset "Terms as vector space D=$D" for D in 0:Dmax
@@ -241,6 +243,58 @@ end
 
 ################################################################################
 
+# Random polynomial spaces
+function Base.rand(rng::AbstractRNG,
+                   ::Random.SamplerType{PolySpace{D,T}}) where {D,T}
+    n = rand(0:5)
+    ps = rand(rng, Poly{D,T}, n)
+    ps = filter(p -> !iszero(p), ps)
+    return PolySpace{D,T}(ps)
+end
+
+@testset "Polynomial spaces D=$D" for D in 0:Dmax
+    T = Int
+
+    for iter in 1:100
+        ps = rand(PolySpace{D,T})
+        qs = rand(PolySpace{D,T})
+        rs = rand(PolySpace{D,T})
+        ns = PolySpace{D,T}()
+        a = rand(-10:10)
+        b = rand(-10:10)
+
+        @test ps == ps
+        @test qs == qs
+        @test (issubset(ps, qs) && issubset(qs, ps)) == (ps == qs)
+
+        @test isempty(ns)
+        @test isempty(ps) == (length(ps) == 0)
+
+        @test union(ps, ns) == ps
+        @test union(ps, qs) == union(qs, ps)
+        @test union(union(ps, qs), rs) == union(ps, union(qs, rs))
+
+        @test setdiff(ps, ns) == ps
+        @test setdiff(setdiff(ps, qs), rs) == setdiff(ps, union(qs, rs))
+
+        @test iszero(ns)
+        # @test ps + ns == ps
+        # @test ps + qs == qs + ps
+        # @test (ps + qs) + rs == ps + (qs + rs)
+
+        for dir in 1:D
+            @test deriv(union(ps, qs), dir) ==
+                  union(deriv(ps, dir), deriv(qs, dir))
+            @test koszul(union(ps, qs), dir) ==
+                  union(koszul(ps, dir), koszul(qs, dir))
+        end
+    end
+end
+
+################################################################################
+################################################################################
+################################################################################
+
 @testset "Polynomial forms as vector space D=$D R=$R" for D in 0:Dmax, R in 0:D
     T = Int
 
@@ -340,10 +394,12 @@ end
         Rx = rand(0:D)
         Ry = rand(0:D)
         x = rand(Form{D,Rx,Poly{D,T}})
+        x2 = rand(Form{D,Rx,Poly{D,T}})
         y = rand(Form{D,Ry,Poly{D,T}})
         a = T(rand(-10:10))
 
         if Rx <= D - 1
+            @test deriv(x + x2) == deriv(x) + deriv(x2)
             @test deriv(a * x) == a * deriv(x)
         end
         if Rx + Ry <= D - 1
@@ -354,6 +410,7 @@ end
         end
 
         if 1 <= Rx
+            @test koszul(x + x2) == koszul(x) + koszul(x2)
             @test koszul(a * x) == a * koszul(x)
         end
         if 1 <= min(Rx, Ry) && Rx + Ry <= D
@@ -399,3 +456,121 @@ end
 end
 
 ################################################################################
+
+@testset "Convert polynomial forms to vectors D=$D R=$R" for D in
+                                                             0:min(5, Dmax),
+R in 0:D
+
+    T = Int
+
+    for iter in 1:100
+        x = rand(Form{D,R,Poly{D,T}})
+        y = rand(Form{D,R,Poly{D,T}})
+        n = zero(Form{D,R,Poly{D,T}})
+        a = rand(-10:10)
+
+        @test maxpower(n) == 0
+        p = max(maxpower(x), maxpower(y))
+
+        @test iszero(form2vec(n, p))
+        @test form2vec(n + x, p) == form2vec(x, p)
+        @test form2vec(x + y, p) == form2vec(x, p) + form2vec(y, p)
+        @test form2vec(a * x, p) == a * form2vec(x, p)
+
+        nrows = length(form2vec(n, p))
+        @test forms2mat([x], p) == reshape(form2vec(x, p), nrows, 1)
+    end
+
+    for iter in 1:10
+        ncols = rand(1:5)
+        xs = [rand(Form{D,R,Poly{D,T}}) for j in 1:ncols]
+        ys = [rand(Form{D,R,Poly{D,T}}) for j in 1:ncols]
+        ns = [zero(Form{D,R,Poly{D,T}}) for j in 1:ncols]
+        a = rand(-10:10)
+
+        @test maxpower(ns) == 0
+        p = max(maxpower(xs), maxpower(ys))
+
+        @test iszero(forms2mat(ns, p))
+        @test forms2mat(ns + xs, p) == forms2mat(xs, p)
+        @test forms2mat(xs + ys, p) == forms2mat(xs, p) + forms2mat(ys, p)
+        @test forms2mat(a * xs, p) == a * forms2mat(xs, p)
+    end
+end
+
+################################################################################
+
+@testset "Bases D=$D R=$R p=$p" for D in 0:Dmax, R in 0:D, p in 0:4
+    T = Int
+
+    # feec-icerm-lecture3, page 23
+    # n = D
+    # r = p
+    # k = R
+
+    fb = full_basis(Basis{D,R,T}, p)
+    @test length(fb.forms) == binomial(p + D, p) * binomial(D, R)
+
+    hb = homogeneous_basis(Basis{D,R,T}, p)
+    @test length(hb.forms) == binomial(p + D - 1, p) * binomial(D, R)
+end
+
+################################################################################
+
+@testset "Complexes D=$D p=$p" for D in 0:Dmax, p in 1:max(2, 5 - D)
+    T = Int
+
+    pc = polynomial_complex(Val(D), Int, p)
+    tpc = trimmed_polynomial_complex(Val(D), Int, p)
+    epc = extended_trimmed_polynomial_complex(Val(D), Int, p)
+
+    @test Set(keys(pc)) == Set(0:D)
+    @test Set(keys(tpc)) == Set(0:D)
+    @test Set(keys(epc)) == Set(0:D)
+
+    for R in 0:D
+        @test pc[R] isa Basis{D,R,T}
+        @test tpc[R] isa Basis{D,R,T}
+        @test epc[R] isa Basis{D,R,T}
+
+        fb = full_basis(Basis{D,R,T}, p)
+        fb1 = full_basis(Basis{D,R,T}, p - 1)
+
+        if R != 0 && R != D
+            @test issubset(fb1, tpc[R])
+            @test fb1 != tpc[R]
+        end
+        if R == 0
+            @test tpc[R] == pc[R]
+        elseif R == D
+            @test tpc[R] == fb1
+        else
+            @test issubset(tpc[R], fb)
+            @test tpc[R] != fb
+        end
+        @test issubset(tpc[R], epc[R])
+        if R == 0
+            @test epc[R] == pc[R]
+        elseif R == D
+            # This does not seem to hold
+            # @test epc[R] == fb1
+        else
+            @test issubset(epc[R], fb)
+            @test epc[R] != pc[R]
+        end
+
+        if R < D
+            @test issubset(deriv(pc[R]), pc[R + 1])
+            @test issubset(deriv(tpc[R]), tpc[R + 1])
+            # This does not seem to hold
+            # This also means that epc is not actually complex!
+            # @test issubset(deriv(epc[R]), epc[R + 1])
+        end
+        if R > 0
+            @test issubset(koszul(pc[R]), pc[R - 1])
+            @test issubset(koszul(tpc[R]), tpc[R - 1])
+            # This does not seem to hold
+            # @test issubset(koszul(epc[R]), epc[R - 1])
+        end
+    end
+end
