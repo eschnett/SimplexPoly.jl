@@ -131,7 +131,7 @@ struct Poly{D,T} <: Number
 end
 
 function combine(terms::Vector{Term{D,T}}) where {D,T}
-    terms = sort(terms; by=(t -> t.powers))
+    terms = sort(terms; by=(t -> t.powers), rev=true)
     isempty(terms) && return terms
     newterms = Term{D,T}[]
     i = 0
@@ -274,7 +274,7 @@ struct PolySpace{D,T}
 end
 
 function combine(polys::Vector{Poly{D,T}}) where {D,T}
-    polys = sort(polys)
+    polys = sort(polys; rev=true)
     unique!(polys)
     filter!(p -> !iszero(p), polys)
     return polys
