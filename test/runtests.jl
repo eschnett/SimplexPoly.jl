@@ -296,9 +296,7 @@ end
 ################################################################################
 ################################################################################
 
-@testset "Polynomial forms as vector space D=$D R=$R" for D in 0:Dmax,
-R in 0:D
-
+@testset "Polynomial forms as vector space D=$D R=$R" for D in 0:Dmax, R in 0:D
     T = Int
 
     for iter in 1:100
@@ -461,8 +459,7 @@ end
 ################################################################################
 
 @testset "Convert polynomial forms to vectors D=$D R=$R" for D in
-                                                                       0:min(5,
-                                                                             Dmax),
+                                                             0:min(5, Dmax),
 R in 0:D
 
     T = Int

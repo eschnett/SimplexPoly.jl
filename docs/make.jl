@@ -6,5 +6,5 @@ using Documenter
 
 using SimplexPoly
 
-makedocs(sitename="SimplexPoly"; format=Documenter.HTML(prettyurls=false))
-deploydocs(repo="github.com/eschnett/SimplexPoly.jl")
+makedocs(; sitename="SimplexPoly", format=Documenter.HTML(; prettyurls=false))
+deploydocs(; repo="github.com/eschnett/SimplexPoly.jl")
