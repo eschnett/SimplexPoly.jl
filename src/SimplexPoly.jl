@@ -545,6 +545,7 @@ function tensordiff(basis1::Basis{D,R,T}, basis2::Basis{D,R,T}) where {D,R,T}
 end
 
 Base.isempty(basis::Basis) = isempty(basis.forms)
+Base.length(basis::Basis) = length(basis.forms)
 
 function Base.in(form::Form{D,R,Poly{D,T}}, basis::Basis{D,R,T}) where {D,R,T}
     # Fast paths
