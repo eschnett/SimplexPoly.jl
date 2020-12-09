@@ -214,8 +214,7 @@ Base.one(::Poly{D,T}) where {D,T} = one(Poly{D,T})
 Base.isone(x::Poly{D,T}) where {D,T} = length(x.terms) == 1 && isone(x.terms[1])
 
 export unit
-function DifferentialForms.unit(::Type{Poly{D,T}}, dir::Int,
-                                coeff=one(T)) where {D,T}
+function Forms.unit(::Type{Poly{D,T}}, dir::Int, coeff=one(T)) where {D,T}
     D::Int
     @assert D >= 0
     @assert 1 <= dir <= D
@@ -505,7 +504,12 @@ function Base.show(io::IO, mime::MIME"text/plain",
 end
 
 function Base.:(==)(b1::Basis{D,R}, b2::Basis{D,R}) where {D,R}
-    return b1.forms == b2.forms
+    # return b1.forms == b2.forms
+    # Fast paths
+    b1.forms == b2.forms && return true
+    isempty(b1.forms) != isempty(b2.forms) && return false
+    # Use subset relations
+    return issubset(b1, b2) && issubset(b2, b1)
 end
 
 Base.isequal(b1::Basis, b2::Basis) = isequal(b1.forms, b2.forms)
@@ -516,13 +520,13 @@ Base.zero(::Type{<:Basis{D,R,T}}) where {D,R,T} = Basis{D,R,T}([])
 Base.zero(::Basis{D,R,T}) where {D,R,T} = zero(Basis{D,R,T})
 Base.iszero(basis::Basis) = isempty(basis.forms)
 
-function DifferentialForms.unit(form::Form{D,R,Poly{D,T}}) where {D,R,T}
+function Forms.unit(form::Form{D,R,Poly{D,T}}) where {D,R,T}
     return Basis{D,R,T}([form])
 end
 
 export tensorsum, ⊕
-function DifferentialForms.tensorsum(basis1::Basis{D,R,T},
-                                     basis2::Basis{D,R,T}) where {D,R,T}
+function Forms.tensorsum(basis1::Basis{D,R,T},
+                         basis2::Basis{D,R,T}) where {D,R,T}
     return Basis{D,R,T}([basis1.forms; basis2.forms])
 end
 
@@ -544,6 +548,7 @@ Base.isempty(basis::Basis) = isempty(basis.forms)
 
 function Base.in(form::Form{D,R,Poly{D,T}}, basis::Basis{D,R,T}) where {D,R,T}
     # Fast paths
+    isempty(basis.forms) && return false
     any(form == f for f in basis.forms) && return true
     # Convert representation to sparse vectors/matrices
     maxp = max(maxpower(form), maxpower(basis.forms))
@@ -796,6 +801,125 @@ function extended_trimmed_polynomial_complex(::Val{D}, ::Type{T},
     end
 
     return cc
+end
+
+################################################################################
+
+export whitney
+"""
+whitney
+
+Calculate Whitney forms
+"""
+function whitney(::Val{D1}, inds::SVector{N,Int}) where {D1,N}
+    D1::Int
+    N::Int
+    @assert 1 <= D1
+    @assert 1 <= N <= D1
+    R = N - 1
+    @assert all(1 <= inds[n] <= D1 for n in 1:N)
+    @assert all(inds[n] < inds[n + 1] for n in 1:(N - 1))
+    ϕ = zero(Form{D1,R,Poly{D1,Int}})
+    for n in 1:N
+        inds′ = deleteat(inds, n)
+        f = unit(Form{D1,R,Int}, inds′)
+        p = bitsign(n - 1) * unit(Poly{D1,Int}, inds[n])
+        ϕ += p * f
+    end
+    return ϕ::Form{D1,R,Poly{D1,Int}}
+end
+function whitney(::Val{D1}, inds::NTuple{N,Int}) where {D1,N}
+    return whitney(Val(D1), SVector{N,Int}(inds))
+end
+function whitney(::Type{Basis{D1,R,Int}}) where {D1,R}
+    D1::Int
+    R::Int
+    @assert 1 <= D1
+    @assert 0 <= R <= D1 - 1
+    nelts = binomial(D1, R + 1)
+    forms = [whitney(Val(D1), Forms.lin2lst(Val(D1), Val(R + 1), n))
+             for n in 1:nelts]
+    return Basis{D1,R,Int}(forms)
+end
+
+export whitney_support
+"""
+whitney_support
+
+Determine on what part of a simplex (vertex, edge, face, ...) a
+particular Whitney forms should live.
+"""
+function whitney_support(::Val{D1}, inds::SVector{N,Int}) where {D1,N}
+    return inds
+end
+
+################################################################################
+
+export barycentric2cartesian
+function barycentric2cartesian(λterm::Term{D1,T}) where {D1,T}
+    D1::Int
+    @assert 1 <= D1
+    D = D1 - 1
+    # This assumes a standard simplex:
+    #     λᵢ = xᵢ
+    #     λₙ = 1 - Σᵢ λᵢ
+    λn = one(Poly{D,T})
+    if D > 0
+        λn -= sum(unit(Poly{D,T}, d) for d in 1:D)
+    end
+    xpoly = Poly{D,T}([Term{D,T}(deleteat(λterm.powers, D1), λterm.coeff)])
+    xpoly *= λn^λterm.powers[D1]
+    return xpoly::Poly{D,T}
+end
+function barycentric2cartesian(λpoly::Poly{D1,T}) where {D1,T}
+    D1::Int
+    @assert 1 <= D1
+    D = D1 - 1
+    isempty(λpoly.terms) && return zero(Poly{D,T})
+    xpoly = sum(barycentric2cartesian(λterm) for λterm in λpoly.terms)
+    return xpoly::Poly{D,T}
+end
+function barycentric2cartesian(λform::Form{D1,R,Poly{D1,T}}) where {D1,R,T}
+    D1::Int
+    R::Int
+    @assert 1 <= D1
+    D = D1 - 1
+    @assert 0 <= R <= D
+    # This assumes a standard simplex:
+    #     λᵢ = xᵢ
+    #     λₙ = 1 - Σᵢ λᵢ
+    #     dλᵢ = dxᵢ
+    #     dλₙ = -Σᵢ dλᵢ
+    if D == 0
+        λpoly = λform[]
+        xpoly = barycentric2cartesian(λpoly)
+        xform = Form{D,R,Poly{D,T}}((xpoly,))
+    else
+        dλn = -sum(unit(Form{D,1,Poly{D,T}}, d) for d in 1:D)
+        xform = zero(Form{D,R,Poly{D,T}})
+        for (λlin, λpoly) in enumerate(λform)
+            λbits = Forms.lin2bit(Val(D1), Val(R), λlin)
+            xbits = deleteat(λbits, D1)
+            if λbits[D1]
+                xlin = Forms.bit2lin(Val(D), Val(R - 1), xbits)
+                xunit = unit(Form{D,R - 1,Poly{D,T}}, xlin) ∧ dλn
+            else
+                xlin = Forms.bit2lin(Val(D), Val(R), xbits)
+                xunit = unit(Form{D,R,Poly{D,T}}, xlin)
+            end
+            xpoly = barycentric2cartesian(λpoly)
+            xform += xpoly * xunit
+        end
+    end
+    return xform::Form{D,R,Poly{D,T}}
+end
+function barycentric2cartesian(λbasis::Basis{D1,R,T}) where {D1,R,T}
+    D1::Int
+    R::Int
+    @assert 1 <= D1
+    D = D1 - 1
+    @assert 0 <= R <= D
+    return Basis{D,R,T}(barycentric2cartesian.(λbasis.forms))
 end
 
 end

@@ -1,3 +1,4 @@
+using ComputedFieldTypes
 using DifferentialForms
 using Random
 using SimplexPoly
@@ -295,7 +296,9 @@ end
 ################################################################################
 ################################################################################
 
-@testset "Polynomial forms as vector space D=$D R=$R" for D in 0:Dmax, R in 0:D
+@testset "Polynomial forms as vector space D=$D R=$R" for D in 0:Dmax,
+R in 0:D
+
     T = Int
 
     for iter in 1:100
@@ -458,7 +461,8 @@ end
 ################################################################################
 
 @testset "Convert polynomial forms to vectors D=$D R=$R" for D in
-                                                             0:min(5, Dmax),
+                                                                       0:min(5,
+                                                                             Dmax),
 R in 0:D
 
     T = Int
@@ -573,4 +577,51 @@ end
             # @test issubset(koszul(epc[R]), epc[R - 1])
         end
     end
+end
+
+################################################################################
+
+@testset "Whitney forms D=$D R=$R" for D in 0:Dmax, R in 0:D
+    T = Int
+
+    ϕ = whitney(Basis{D + 1,R,Int})
+    @test length(ϕ.forms) == binomial(D + 1, R + 1)
+
+    for n in 1:length(ϕ.forms)
+        ϕₙ = ϕ.forms[n]
+        ϕ′ = Basis{D + 1,R,T}([ϕ.forms[1:(n - 1)]; ϕ.forms[(n + 1):end]])
+        @test !(ϕₙ in ϕ′)
+    end
+end
+
+@testset "Convert from barycentric to Cartesian coordinates D=$D R=$R" for D in
+                                                                           0:Dmax,
+R in 0:D
+
+    T = Int
+
+    ϕ = whitney(Basis{D + 1,R,Int})
+    @test length(ϕ.forms) == binomial(D + 1, R + 1)
+    ϕx = barycentric2cartesian(ϕ)
+
+    for n in 1:length(ϕx.forms)
+        ϕₙ = ϕx.forms[n]
+        ϕx′ = Basis{D,R,T}([ϕx.forms[1:(n - 1)]; ϕx.forms[(n + 1):end]])
+        @test !(ϕₙ in ϕx′)
+    end
+end
+
+@testset "Compare Whitney basis to trimmed p=1 basis D=$D R=$R" for D in 0:Dmax,
+R in 0:D
+
+    T = Int
+    p = 1                       # Whitney basis is equivalent to p=1
+
+    ϕλ = whitney(Basis{D + 1,R,Int})
+    ϕ = barycentric2cartesian(ϕλ)
+
+    tpc = trimmed_polynomial_complex(Val(D), Int, p)
+    tpcR = tpc[R]
+
+    @test ϕ == tpcR
 end
