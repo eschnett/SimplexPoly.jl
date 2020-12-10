@@ -821,10 +821,11 @@ function whitney(::Val{D1}, inds::SVector{N,Int}) where {D1,N}
     @assert all(1 <= inds[n] <= D1 for n in 1:N)
     @assert all(inds[n] < inds[n + 1] for n in 1:(N - 1))
     ϕ = zero(Form{D1,R,Poly{D1,Int}})
+    q = factorial(N-1)
     for n in 1:N
         inds′ = deleteat(inds, n)
         f = unit(Form{D1,R,Int}, inds′)
-        p = bitsign(n - 1) * unit(Poly{D1,Int}, inds[n])
+        p = q * bitsign(n - 1) * unit(Poly{D1,Int}, inds[n])
         ϕ += p * f
     end
     return ϕ::Form{D1,R,Poly{D1,Int}}
