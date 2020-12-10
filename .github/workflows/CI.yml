@@ -12,9 +12,9 @@ jobs:
         # os: [ubuntu-latest, windows-latest, macOS-latest]
         # version: ["1.4", "1.5", "nightly"]
         include:
-          - arch: "x64"
-            os: "ubuntu-latest"
-            version: "1.4"
+          # - arch: "x64"
+          #   os: "ubuntu-latest"
+          #   version: "1.4"
           - arch: "x64"
             os: "ubuntu-latest"
             version: "1.5"
