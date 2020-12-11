@@ -461,7 +461,7 @@ export Basis
 end
 
 function combine(forms::Vector{<:Form{D,R,Poly{D,T}}}) where {D,R,T}
-    forms = sort(forms)
+    forms = sort(forms; rev=true)
     unique!(forms)
     filter!(form -> !iszero(form), forms)
     map!(normalize, forms, forms)
@@ -821,7 +821,7 @@ function whitney(::Val{D1}, inds::SVector{N,Int}) where {D1,N}
     @assert all(1 <= inds[n] <= D1 for n in 1:N)
     @assert all(inds[n] < inds[n + 1] for n in 1:(N - 1))
     ϕ = zero(Form{D1,R,Poly{D1,Int}})
-    q = factorial(N-1)
+    q = factorial(N - 1)
     for n in 1:N
         inds′ = deleteat(inds, n)
         f = unit(Form{D1,R,Int}, inds′)
