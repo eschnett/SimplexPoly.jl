@@ -482,9 +482,9 @@ end
 
 export compare
 function compare(x::Form{D,R,<:Poly{D}}, y::Form{D,R,<:Poly{D}}) where {D,R}
-    for (px,py) in zip(x.elts, y.elts)
-        c = compare(px,py)
-        c !=0 && return c
+    for (px, py) in zip(x.elts, y.elts)
+        c = compare(px, py)
+        c != 0 && return c
     end
     return 0
 end
@@ -494,7 +494,7 @@ function combine(forms::Vector{<:Form{D,R,Poly{D,T}}}) where {D,R,T}
     unique!(forms)
     filter!(form -> !iszero(form), forms)
     map!(normalize, forms, forms)
-    sort!(forms, lt=(x,y)->compare(x,y)<0)
+    sort!(forms; lt=(x, y) -> compare(x, y) < 0)
     # TODO: filter out linear combinations
     return forms
 end
