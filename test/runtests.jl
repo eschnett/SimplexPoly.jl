@@ -167,6 +167,17 @@ end
         i = rand(0:5)
         j = rand(0:5)
 
+        # Ensure terms are nonzero
+        for i in 1:length(x.terms)
+            @test !iszero(x.terms[i])
+        end
+
+        # Ensure terms are sorted and unique
+        for i in 2:length(x.terms)
+            @test x.terms[i - 1].powers > x.terms[i].powers
+            @test compare(x.terms[i - 1], x.terms[i]) < 0
+        end
+
         @test n == n
         @test e == e
         @test e != n
@@ -263,6 +274,19 @@ end
         ns = PolySpace{D,T}()
         a = rand(-10:10)
         b = rand(-10:10)
+
+        #TODO
+        # # Ensure polynomials are nonzero
+        # for i in 1:length(ps.polys)
+        #     @test !iszero(ps.polys[i])
+        # end
+
+        #TODO
+        # # Ensure polynomials are sorted and unique
+        # for i in 2:length(ps.polys)
+        #     @show i ps ps.polys[i - 1] ps.polys[i]
+        #     @test compare(ps.polys[i - 1], ps.polys[i]) < 0
+        # end
 
         @test ps == ps
         @test qs == qs

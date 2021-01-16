@@ -41,6 +41,13 @@ function Base.isequal(x::Term, y::Term)
 end
 Base.isless(x::Term, y::Term) = isless((x.powers, x.coeff), (y.powers, y.coeff))
 Base.hash(x::Term, h::UInt) = hash((x.powers, x.coeff), hash(0x11325cd9, h))
+export compare
+function compare(x::Term, y::Term)
+    # Note reversed signs; we want (1,0) < (0,1)
+    x.powers > y.powers && return -1
+    x.powers < y.powers && return +1
+    return 0
+end
 
 function Base.map(f, x::Term{D,T}, ys::Term{D,T}...) where {D,T}
     @assert all(x.powers == y.powers for y in ys)
@@ -172,6 +179,18 @@ Base.:(==)(p::Poly{D}, q::Poly{D}) where {D} = p.terms == q.terms
 Base.isequal(p::Poly, q::Poly) = isequal(p.terms, q.terms)
 Base.isless(p::Poly, q::Poly) = isless(p.terms, q.terms)
 Base.hash(p::Poly, h::UInt) = hash(p.terms, hash(0x0b9503a7, h))
+export compare
+function compare(p::Poly, q::Poly)
+    for i in 1:min(length(p.terms), length(q.terms))
+        c = compare(p.terms[i], q.terms[i])
+        c != 0 && return c
+    end
+    # Polynomials with more terms come first since a non-zero term
+    # comes before the zero term
+    length(p.terms) > length(q.terms) && return -1
+    length(p.terms) < length(q.terms) && return +1
+    return 0
+end
 
 Base.map(f, p::Poly{D,T}) where {D,T} = Poly{D,T}(map(t -> map(f, t), p.terms))
 
@@ -274,6 +293,8 @@ struct PolySpace{D,T}
 end
 
 function combine(polys::Vector{Poly{D,T}}) where {D,T}
+    # TODO: This is wrong -- need to combine polynomials that are
+    # multiples of each other
     polys = sort(polys; rev=true)
     unique!(polys)
     filter!(p -> !iszero(p), polys)
@@ -454,10 +475,18 @@ export Basis
         D::Int
         R::Int
         @assert 0 ≤ R ≤ D
-        # TODO: preserve order
         forms = combine(forms)
         return new{D,R,T}(forms)
     end
+end
+
+export compare
+function compare(x::Form{D,R,<:Poly{D}}, y::Form{D,R,<:Poly{D}}) where {D,R}
+    for (px,py) in zip(x.elts, y.elts)
+        c = compare(px,py)
+        c !=0 && return c
+    end
+    return 0
 end
 
 function combine(forms::Vector{<:Form{D,R,Poly{D,T}}}) where {D,R,T}
@@ -465,6 +494,7 @@ function combine(forms::Vector{<:Form{D,R,Poly{D,T}}}) where {D,R,T}
     unique!(forms)
     filter!(form -> !iszero(form), forms)
     map!(normalize, forms, forms)
+    sort!(forms, lt=(x,y)->compare(x,y)<0)
     # TODO: filter out linear combinations
     return forms
 end
