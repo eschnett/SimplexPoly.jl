@@ -90,6 +90,8 @@ Basis{2,2,Int64}[⟦(1 * [0, 0])⟧]
 These is the basis element for 2-forms. The only (constant) basis
 polynomial is: dx ∧ dy.
 
+TODO: This is wrong; there should be 3 basis polynomials.
+
 ### Trimmed polynomial complex Pᵣ⁻Λᵏ
 
 Polynomial complex Pᵣ⁻Λᵏ for polynomial order r=2 in n=2 dimensions.

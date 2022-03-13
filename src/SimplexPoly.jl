@@ -19,6 +19,12 @@ struct Term{D,T}
         return new{D,T}(powers, coeff)
     end
 end
+# Term{D,T}(powers::SVector{D,Int}, coeff::T) where {D,T} = Term{D,T,Pow{powers, coeff}
+Term{D}(powers::SVector{D,Int}, coeff::T) where {D,T} = Term{D,T}(powers, coeff)
+Term(powers::SVector{D,Int}, coeff::T) where {D,T} = Term{D,T}(powers, coeff)
+function Base.convert(::Type{Term{D,T}}, term::Term{D}) where {D,T}
+    return map(x -> convert(T, x), term)
+end
 
 function Base.show(io::IO, ::MIME"text/plain", x::Term{D,T}) where {D,T}
     skiptype = get(io, :typeinfo, Any) <: Term{D,T}
@@ -49,39 +55,40 @@ function compare(x::Term, y::Term)
     return 0
 end
 
-function Base.map(f, x::Term{D,T}, ys::Term{D,T}...) where {D,T}
+function Base.map(f, x::Term{D}, ys::Term{D}...) where {D}
     @assert all(x.powers == y.powers for y in ys)
-    return Term{D,T}(x.powers, map(f, x.coeff, (y.coeff for y in ys)...))
+    return Term{D}(x.powers, map(f, x.coeff, (y.coeff for y in ys)...))
 end
 
 function Base.zero(::Type{Term{D,T}}) where {D,T}
     return Term{D,T}(zero(SVector{D,Int}), zero(T))
 end
 Base.zero(::Term{D,T}) where {D,T} = zero(Term{D,T})
-Base.iszero(x::Term{D,T}) where {D,T} = iszero(x.coeff)
+Base.iszero(x::Term) = iszero(x.coeff)
 
 function Base.one(::Type{Term{D,T}}) where {D,T}
     return Term{D,T}(zero(SVector{D,Int}), one(T))
 end
 Base.one(::Term{D,T}) where {D,T} = one(Term{D,T})
-Base.isone(x::Term{D,T}) where {D,T} = iszero(x.powers) && isone(x.coeff)
+Base.isone(x::Term) = iszero(x.powers) && isone(x.coeff)
 
-Base.:+(x::Term{D,T}) where {D,T} = map(+, x)
-Base.:-(x::Term{D,T}) where {D,T} = map(-, x)
+Base.:+(x::Term) = map(+, x)
+Base.:-(x::Term) = map(-, x)
+Base.conj(x::Term) = map(conj, x)
 
-Base.:+(x::Term{D,T}, y::Term{D,T}) where {D,T} = map(+, x, y)
-Base.:-(x::Term{D,T}, y::Term{D,T}) where {D,T} = map(-, x, y)
-Base.:*(a, x::Term{D,T}) where {D,T} = map(c -> a * c, x)
-Base.:*(x::Term{D,T}, a) where {D,T} = map(c -> c * a, x)
-Base.:\(a, x::Term{D,T}) where {D,T} = map(c -> a \ c, x)
-Base.:/(x::Term{D,T}, a) where {D,T} = map(c -> c / a, x)
-Base.div(x::Term{D,T}, a) where {D,T} = map(c -> div(c, a), x)
-Base.mod(x::Term{D,T}, a) where {D,T} = map(c -> mod(c, a), x)
+Base.:+(x::Term{D}, y::Term{D}) where {D} = map(+, x, y)
+Base.:-(x::Term{D}, y::Term{D}) where {D} = map(-, x, y)
+Base.:*(a, x::Term) = map(c -> a * c, x)
+Base.:*(x::Term, a) = map(c -> c * a, x)
+Base.:\(a, x::Term) = map(c -> a \ c, x)
+Base.:/(x::Term, a) = map(c -> c / a, x)
+Base.div(x::Term, a) = map(c -> div(c, a), x)
+Base.mod(x::Term, a) = map(c -> mod(c, a), x)
 
-function Base.:*(x::Term{D,T}, y::Term{D,T}) where {D,T}
-    return Term{D,T}(x.powers + y.powers, x.coeff * y.coeff)
+function Base.:*(x::Term{D}, y::Term{D}) where {D}
+    return Term{D}(x.powers + y.powers, x.coeff * y.coeff)
 end
-function Base.:^(x::Term{D,T}, n::Integer) where {D,T}
+function Base.:^(x::Term, n::Integer)
     @assert n >= 0
     r = one(x)
     while n > 0
@@ -95,13 +102,13 @@ function Base.:^(x::Term{D,T}, n::Integer) where {D,T}
 end
 
 export deriv
-function deriv(term::Term{D,T}, dir::Int) where {D,T}
+function deriv(term::Term{D}, dir::Int) where {D}
     D::Int
     @assert D >= 0
     @assert 1 <= dir <= D
     p = term.powers[dir]
-    p == 0 && return zero(Term{D,T})
-    return Term{D,T}(Base.setindex(term.powers, p - 1, dir), p * term.coeff)
+    p == 0 && return zero(term)
+    return Term{D}(Base.setindex(term.powers, p - 1, dir), p * term.coeff)
 end
 
 """
@@ -116,12 +123,21 @@ Acta Numerica 15, 1-155 (2006), DOI:10.1017/S0962492906210018.
 function koszul end
 
 export koszul
-function koszul(term::Term{D,T}, dir::Int) where {D,T}
+function koszul(term::Term{D}, dir::Int) where {D}
     D::Int
     @assert D >= 0
     @assert 1 <= dir <= D
     p = term.powers[dir]
-    return Term{D,T}(Base.setindex(term.powers, p + 1, dir), term.coeff)
+    return Term{D}(Base.setindex(term.powers, p + 1, dir), term.coeff)
+end
+
+export integral
+function integral(term::Term{D,T}) where {D,T}
+    R = T <: Union{Integer,Rational} ? Rational{BigInt} : T <: AbstractFloat ? T : Nothing
+    D == 0 && return R(term.coeff)
+    # See <https://math.stackexchange.com/questions/207073/definite-integral-over-a-simplex>
+    # We set ν₀ = 1 since the respective term is absent
+    return (term.coeff * (prod(factorial(big(p)) for p in term.powers) // factorial(big(sum(term.powers) + length(term.powers)))))::R
 end
 
 ################################################################################
@@ -135,6 +151,11 @@ struct Poly{D,T} <: Number
         terms = combine(terms)
         return new{D,T}(terms)
     end
+end
+Poly{D}(terms::Vector{Term{D,T}}) where {D,T} = Poly{D,T}(terms)
+Poly(terms::Vector{Term{D,T}}) where {D,T} = Poly{D,T}(terms)
+function Base.convert(::Type{Poly{D,T}}, poly::Poly{D}) where {D,T}
+    return map(x -> convert(T, x), poly)
 end
 
 function combine(terms::Vector{Term{D,T}}) where {D,T}
@@ -166,8 +187,7 @@ function Base.show(io::IO, mime::MIME"text/plain", p::Poly{D,T}) where {D,T}
     for (i, term) in enumerate(p.terms)
         # i > 1 && print(io, ", ")
         i > 1 && print(io, " + ")
-        show(IOContext(io, :compact => true, :typeinfo => Term{D,T}), mime,
-             term)
+        show(IOContext(io, :compact => true, :typeinfo => Term{D,T}), mime, term)
     end
     # print(io, "]")
     print(io, ")")
@@ -192,17 +212,18 @@ function compare(p::Poly, q::Poly)
     return 0
 end
 
-Base.map(f, p::Poly{D,T}) where {D,T} = Poly{D,T}(map(t -> map(f, t), p.terms))
+Base.map(f, p::Poly) = Poly(map(t -> map(f, t), p.terms))
 
-function Base.map(f, p::Poly{D,T}, q::Poly{D,T}) where {D,T}
-    terms = Term{D,T}[]
+function Base.map(f, p::Poly{D,T}, q::Poly{D,U}) where {D,T,U}
+    R = typeof(f(zero(T), zero(U)))
+    terms = Term{D,R}[]
     i = j = 1
     ni = length(p.terms)
     nj = length(q.terms)
     while i <= ni || j <= nj
         usei = usej = false
         if i <= ni && j <= nj
-            c = cmp(p.terms[i].powers, q.terms[j].powers)
+            c = compare(p.terms[i], q.terms[j])
             usei = c <= 0
             usej = c >= 0
         else
@@ -215,7 +236,39 @@ function Base.map(f, p::Poly{D,T}, q::Poly{D,T}) where {D,T}
         i += usei
         j += usej
     end
-    return Poly{D,T}(terms)
+    return Poly{D,R}(terms)
+end
+
+function Base.reduce(op, p::Poly; init=Base._InitialValue())
+    return reduce(op, p.terms; init=init)
+end
+
+function Base.mapreduce(f, op, p::Poly; init=Base._InitialValue())
+    return reduce(op, f(p.terms); init=init)
+end
+
+function Base.mapreduce(f, op, p::Poly{D}, q::Poly{D}; init) where {D}
+    res = init
+    i = j = 1
+    ni = length(p.terms)
+    nj = length(q.terms)
+    while i <= ni || j <= nj
+        usei = usej = false
+        if i <= ni && j <= nj
+            c = compare(p.terms[i], q.terms[j])
+            usei = c <= 0
+            usej = c >= 0
+        else
+            usei = i <= ni
+            usej = !usei
+        end
+        pi = usei ? p.terms[i] : map(zero, q.terms[j])
+        qj = usej ? q.terms[j] : map(zero, p.terms[i])
+        res = op(res, f(pi.coeff, qj.coeff))::typeof(init)
+        i += usei
+        j += usej
+    end
+    return res
 end
 
 function Base.zero(::Type{Poly{D,T}}) where {D,T}
@@ -241,22 +294,23 @@ function Forms.unit(::Type{Poly{D,T}}, dir::Int, coeff=one(T)) where {D,T}
     return Poly{D,T}([term])
 end
 
-Base.:+(p::Poly{D,T}) where {D,T} = map(+, p)
-Base.:-(p::Poly{D,T}) where {D,T} = map(-, p)
+Base.:+(p::Poly) = map(+, p)
+Base.:-(p::Poly) = map(-, p)
+Base.conj(p::Poly) = map(conj, p)
 
-Base.:+(p::Poly{D,T}, q::Poly{D,T}) where {D,T} = map(+, p, q)
-Base.:-(p::Poly{D,T}, q::Poly{D,T}) where {D,T} = map(-, p, q)
-Base.:*(a::Number, p::Poly{D,T}) where {D,T} = map(t -> a * t, p)
-Base.:*(p::Poly{D,T}, a::Number) where {D,T} = map(t -> t * a, p)
-Base.:\(a::Number, p::Poly{D,T}) where {D,T} = map(t -> a \ t, p)
-Base.:/(p::Poly{D,T}, a::Number) where {D,T} = map(t -> t / a, p)
-Base.div(p::Poly{D,T}, a::Number) where {D,T} = map(t -> div(t, a), p)
-Base.mod(p::Poly{D,T}, a::Number) where {D,T} = map(t -> mod(t, a), p)
+Base.:+(p::Poly{D}, q::Poly{D}) where {D} = map(+, p, q)
+Base.:-(p::Poly{D}, q::Poly{D}) where {D} = map(-, p, q)
+Base.:*(a::Number, p::Poly) = map(t -> a * t, p)
+Base.:*(p::Poly, a::Number) = map(t -> t * a, p)
+Base.:\(a::Number, p::Poly) = map(t -> a \ t, p)
+Base.:/(p::Poly, a::Number) = map(t -> t / a, p)
+Base.div(p::Poly, a::Number) = map(t -> div(t, a), p)
+Base.mod(p::Poly, a::Number) = map(t -> mod(t, a), p)
 
-function Base.:*(p::Poly{D,T}, q::Poly{D,T}) where {D,T}
-    return Poly{D,T}(Term{D,T}[t * u for t in p.terms for u in q.terms])
+function Base.:*(p::Poly{D}, q::Poly{D}) where {D}
+    return Poly{D}([t * u for t in p.terms for u in q.terms])
 end
-function Base.:^(x::Poly{D,T}, n::Integer) where {D,T}
+function Base.:^(x::Poly, n::Integer)
     @assert n >= 0
     r = one(x)
     while n > 0
@@ -269,12 +323,27 @@ function Base.:^(x::Poly{D,T}, n::Integer) where {D,T}
     return r
 end
 
-function deriv(poly::Poly{D,T}, dir::Int) where {D,T}
-    return Poly{D,T}(map(t -> deriv(t, dir), poly.terms))
+function deriv(poly::Poly, dir::Int)
+    return Poly(map(t -> deriv(t, dir), poly.terms))
 end
 
-function koszul(poly::Poly{D,T}, dir::Int) where {D,T}
-    return Poly{D,T}(map(t -> koszul(t, dir), poly.terms))
+function koszul(poly::Poly, dir::Int)
+    return Poly(map(t -> koszul(t, dir), poly.terms))
+end
+
+function integral(poly::Poly{D,T}) where {D,T}
+    R = T <: Union{Integer,Rational} ? Rational{BigInt} : T <: AbstractFloat ? T : Nothing
+    isempty(poly.terms) && return zero(R)
+    return sum(integral(term) for term in poly.terms)::R
+end
+
+# function LinearAlgebra.dot(p::Poly{D,T}, q::Poly{D,T}) where {D,T}
+#     return integral(conj(p) * q)
+# end
+
+function LinearAlgebra.dot(p::Poly{D,T}, q::Poly{D,U}) where {D,T,U}
+    init = zero(T) ⋅ zero(U)
+    return mapreduce(⋅, +, p, q; init=init)::typeof(init)
 end
 
 ################################################################################
@@ -303,8 +372,7 @@ end
 
 PolySpace{D,T}() where {D,T} = PolySpace{D,T}(Poly{D,T}[])
 
-function Base.show(io::IO, mime::MIME"text/plain",
-                   ps::PolySpace{D,T}) where {D,T}
+function Base.show(io::IO, mime::MIME"text/plain", ps::PolySpace{D,T}) where {D,T}
     skiptype = get(io, :typeinfo, Any) <: PolySpace{D,T}
     if !skiptype
         print(io, "PolySpace")
@@ -312,8 +380,7 @@ function Base.show(io::IO, mime::MIME"text/plain",
     print(io, "[")
     for (i, poly) in enumerate(ps.polys)
         i > 1 && print(io, ", ")
-        show(IOContext(io, :compact => true, :typeinfo => Poly{D,T}), mime,
-             poly)
+        show(IOContext(io, :compact => true, :typeinfo => Poly{D,T}), mime, poly)
     end
     print(io, "]")
     return nothing
@@ -403,6 +470,34 @@ function koszul(f::Form{D,R,Poly{D,T}}) where {D,R,T}
     return r::Form{D,R - 1,Poly{D,T}}
 end
 
+function integral(f::Form{D,R,Poly{D,T}}) where {D,R,T}
+    D::Int
+    R::Int
+    @assert 0 <= R <= D
+    U = T <: Union{Integer,Rational} ? Rational{BigInt} : T <: AbstractFloat ? T : Nothing
+    return map(integral, f)::Form{D,R,U}
+end
+
+# function LinearAlgebra.dot(f::Form{D,R,Poly{D,T}},
+#                            g::Form{D,R,Poly{D,T}}) where {D,R,T}
+#     U = T <: Union{Integer,Rational} ? Rational{BigInt} :
+#         T <: AbstractFloat ? T : Nothing
+#     r = zero(U)
+#     for (fi, gi) in zip(f.elts, g.elts)
+#         r += (fi ⋅ gi)::U
+#     end
+#     return r
+# end
+
+function LinearAlgebra.dot(f::Form{D,R,Poly{D,T1}}, g::Form{D,R,Poly{D,T2}}) where {D,R,T1,T2}
+    T = typeof(zero(T1) * zero(T2))
+    r = zero(T)
+    for (fp, gp) in zip(f.elts, g.elts)
+        r += (fp ⋅ gp)::T
+    end
+    return r
+end
+
 ################################################################################
 
 function powers2ind(powers::SVector{D,Int}, maxp::Int) where {D}
@@ -442,8 +537,7 @@ function form2vec(form::Form{D,R,Poly{D,T}}, maxp::Int) where {D,R,T}
 end
 
 export forms2mat
-function forms2mat(forms::Vector{<:Form{D,R,Poly{D,T}}},
-                   maxp::Int) where {D,R,T}
+function forms2mat(forms::Vector{<:Form{D,R,Poly{D,T}}}, maxp::Int) where {D,R,T}
     nrows = length(Form{D,R}) * (maxp + 1)^D
     ncols = length(forms)
     I = Int[]
@@ -482,10 +576,16 @@ end
 
 export compare
 function compare(x::Form{D,R,<:Poly{D}}, y::Form{D,R,<:Poly{D}}) where {D,R}
-    for (px, py) in zip(x.elts, y.elts)
-        c = compare(px, py)
+    px = maxpower(x)
+    py = maxpower(y)
+    c = px - py
+    c != 0 && return c
+
+    for (fx, fy) in zip(x.elts, y.elts)
+        c = compare(fx, fy)
         c != 0 && return c
     end
+
     return 0
 end
 
@@ -495,12 +595,22 @@ function combine(forms::Vector{<:Form{D,R,Poly{D,T}}}) where {D,R,T}
     filter!(form -> !iszero(form), forms)
     map!(normalize, forms, forms)
     sort!(forms; lt=(x, y) -> compare(x, y) < 0)
-    # TODO: filter out linear combinations
+    unique!(forms)
+    # Gram-Schmidt creates polynomials with many and large coefficients
+    forms = gram_schmidt(forms)
+
+    # basisforms = fulltype(Form{D,R,Poly{D,T}})[]
+    # for form in forms
+    #     if !is_in_span(form, basisforms)
+    #         push!(basisforms, form)
+    #     end
+    # end
+    # forms = basisforms
+
     return forms
 end
 
 function normalize(form::Form{D,R,Poly{D,T}}) where {D,R,T<:Integer}
-    # coeffs = T[term.coeff for elt in form for poly in elt for term in poly]
     coeffs = T[]
     for poly in form
         poly::Poly{D,T}
@@ -509,16 +619,53 @@ function normalize(form::Form{D,R,Poly{D,T}}) where {D,R,T<:Integer}
             push!(coeffs, term.coeff)
         end
     end
-    q = gcd(coeffs)
+    isempty(coeffs) && return form
+    q = sign(coeffs[1]) * gcd(coeffs)
     return map(x -> x ÷ q, form)
+end
+
+function normalize(form::Form{D,R,Poly{D,T}}) where {D,R,T<:Rational}
+    coeffs = T[]
+    for poly in form
+        poly::Poly{D,T}
+        for term in poly.terms
+            term::Term{D,T}
+            push!(coeffs, term.coeff)
+        end
+    end
+    isempty(coeffs) && return zero(Form{D,R,Poly{D,Int}})
+    q = T(lcm(denominator.(coeffs)))
+    return normalize(Form{D,R,Poly{D,Int}}(q * form))
+end
+
+function gram_schmidt(forms::Vector{<:Form{D,R,T}}) where {D,R,T}
+    # @show :gram_schmidt forms
+    ortho_forms = fulltype(Form{D,R,T})[]
+    for form in forms
+        # @show :loop form
+        for oform in ortho_forms
+            ovlp = oform ⋅ form
+            scal = oform ⋅ oform
+            # @show ovlp scal
+            form = normalize(scal * form - ovlp * oform)
+            # @show form
+        end
+        if !iszero(form)
+            for oform in ortho_forms
+                # @show :assert oform form oform ⋅ form
+                @assert iszero(oform ⋅ form)
+            end
+            push!(ortho_forms, form)
+        end
+    end
+    return ortho_forms
 end
 
 # function Basis{D,R,T}() where {D,R,T}
 #     return Basis{D,R,T}([])
 # end
 
-function Base.show(io::IO, mime::MIME"text/plain",
-                   b::Basis{D,R,T}) where {D,R,T}
+function Base.show(io::IO, mime::MIME"text/plain", b::Basis{D,R,T}) where {D,R,T}
     skiptype = get(io, :typeinfo, Any) <: Basis{D,R,T}
     if !skiptype
         print(io, "Basis{$D,$R,$T}")
@@ -526,8 +673,7 @@ function Base.show(io::IO, mime::MIME"text/plain",
     print(io, "[")
     for (i, form) in enumerate(b.forms)
         i > 1 && print(io, ", ")
-        show(IOContext(io, :compact => true, :typeinfo => Form{D,R,Poly{D,T}}),
-             mime, form)
+        show(IOContext(io, :compact => true, :typeinfo => Form{D,R,Poly{D,T}}), mime, form)
     end
     print(io, "]")
     return nothing
@@ -546,7 +692,9 @@ Base.isequal(b1::Basis, b2::Basis) = isequal(b1.forms, b2.forms)
 Base.isless(b1::Basis, b2::Basis) = isless(b1.forms, b2.forms)
 Base.hash(b::Basis, h::UInt) = hash(b.forms, hash(0xe8439c4b, h))
 
-Base.zero(::Type{<:Basis{D,R,T}}) where {D,R,T} = Basis{D,R,T}([])
+function Base.zero(::Type{<:Basis{D,R,T}}) where {D,R,T}
+    return Basis{D,R,T}(fulltype(Form{D,R,Poly{D,T}})[])
+end
 Base.zero(::Basis{D,R,T}) where {D,R,T} = zero(Basis{D,R,T})
 Base.iszero(basis::Basis) = isempty(basis.forms)
 
@@ -555,8 +703,7 @@ function Forms.unit(form::Form{D,R,Poly{D,T}}) where {D,R,T}
 end
 
 export tensorsum, ⊕
-function Forms.tensorsum(basis1::Basis{D,R,T},
-                         basis2::Basis{D,R,T}) where {D,R,T}
+function Forms.tensorsum(basis1::Basis{D,R,T}, basis2::Basis{D,R,T}) where {D,R,T}
     return Basis{D,R,T}([basis1.forms; basis2.forms])
 end
 
@@ -577,14 +724,15 @@ end
 Base.isempty(basis::Basis) = isempty(basis.forms)
 Base.length(basis::Basis) = length(basis.forms)
 
-function Base.in(form::Form{D,R,Poly{D,T}}, basis::Basis{D,R,T}) where {D,R,T}
+function is_in_span(form::Form{D,R,Poly{D,T}}, forms::Vector{<:Form{D,R,Poly{D,T}}}) where {D,R,T}
     # Fast paths
-    isempty(basis.forms) && return false
-    any(form == f for f in basis.forms) && return true
+    iszero(form) && return true
+    isempty(forms) && return false
+    any(form == f for f in forms) && return true
     # Convert representation to sparse vectors/matrices
-    maxp = max(maxpower(form), maxpower(basis.forms))
+    maxp = max(maxpower(form), maxpower(forms))
     fvec = form2vec(form, maxp)
-    bmat = forms2mat(basis.forms, maxp)
+    bmat = forms2mat(forms, maxp)
     # Sparse solver doesn't handle sparse vectors
     fvec = collect(fvec)
     # Is there a linear combination of the vectors in bmat that yields fvec?
@@ -592,12 +740,21 @@ function Base.in(form::Form{D,R,Poly{D,T}}, basis::Basis{D,R,T}) where {D,R,T}
     if T <: Integer
         # Use floating point numbers for integer polynomials
         avec = float.(bmat) \ float.(fvec)
-        avec = rationalize.(avec; tol=sqrt(eps()))
+        avec = rationalize.(avec; tol=1e3 * eps())
     else
         @assert false
     end
     rvec = fvec - bmat * avec
-    return iszero(rvec)
+    iszero(rvec) && return true
+    if D ≥ 6 && maximum(abs.(rvec)) ≤ 1e5 * binomial(D, R) * eps()
+        @info "`is_in_span` returns an approximate result"
+        return true
+    end
+    return false
+end
+
+function Base.in(form::Form{D,R,Poly{D,T}}, basis::Basis{D,R,T}) where {D,R,T}
+    return is_in_span(form, basis.forms)
 end
 
 function Base.issubset(basis1::Basis{D,R}, basis2::Basis{D,R}) where {D,R}
@@ -613,8 +770,7 @@ function make_basis1(::Type{<:Basis{D,R,T}}, p::Int, cond) where {D,R,T}
     @assert 0 <= R <= D
     @assert p >= -1             # -1 is the empty basis
     polys = Poly{D,T}[]
-    for i0 in
-        CartesianIndex(ntuple(d -> 0, D)):CartesianIndex(ntuple(d -> p, D))
+    for i0 in CartesianIndex(ntuple(d -> 0, D)):CartesianIndex(ntuple(d -> p, D))
         i = SVector{D,Int}(i0.I)
         if cond(sum(i))
             push!(polys, Poly{D,T}([Term{D,T}(i, one(T))]))
@@ -643,8 +799,7 @@ function make_basis2(::Type{<:Basis{D,R,T}}, p::Int, cond) where {D,R,T}
     @assert p >= -1             # -1 is the empty basis
     N = length(Form{D,R})
     forms = fulltype(Form{D,R,Poly{D,T}})[zero(Form{D,R,Poly{D,T}})]
-    for i0 in
-        CartesianIndex(ntuple(d -> 0, D)):CartesianIndex(ntuple(d -> p, D))
+    for i0 in CartesianIndex(ntuple(d -> 0, D)):CartesianIndex(ntuple(d -> p, D))
         i = SVector{D,Int}(i0.I)
         if cond(sum(i))
             poly = Poly{D,T}([Term{D,T}(i, one(T))])
@@ -661,8 +816,7 @@ function make_basis(::Type{<:Basis{D,R,T}}, p::Int, cond) where {D,R,T}
     @assert 0 <= R <= D
     @assert p >= -1             # -1 is the empty basis
     polys = Poly{D,T}[]
-    for i0 in
-        CartesianIndex(ntuple(d -> 0, D)):CartesianIndex(ntuple(d -> p, D))
+    for i0 in CartesianIndex(ntuple(d -> 0, D)):CartesianIndex(ntuple(d -> p, D))
         i = SVector{D,Int}(i0.I)
         if cond(sum(i))
             push!(polys, Poly{D,T}([Term{D,T}(i, one(T))]))
@@ -672,8 +826,7 @@ function make_basis(::Type{<:Basis{D,R,T}}, p::Int, cond) where {D,R,T}
     forms = fulltype(Form{D,R,Poly{D,T}})[]
     for n in 1:N
         for poly in polys
-            form = Form{D,R,Poly{D,T}}(ntuple(m -> m == n ? poly :
-                                                   zero(Poly{D,T}), N))
+            form = Form{D,R,Poly{D,T}}(ntuple(m -> m == n ? poly : zero(Poly{D,T}), N))
             push!(forms, form)
         end
     end
@@ -756,6 +909,8 @@ export polynomial_complex
 polynomial_complex
 
 Pᵣ Λᵏ
+
+The spaces with constant r form a complex. NOTE: This differs from Arnold's definition!
 """
 function polynomial_complex(::Val{D}, ::Type{T}, p::Int) where {D,T}
     D::Int
@@ -776,6 +931,8 @@ export trimmed_polynomial_complex
 trimmed_polynomial_complex
 
 Pᵣ⁻ Λᵏ
+
+The spaces with constant r form a complex.
 """
 function trimmed_polynomial_complex(::Val{D}, ::Type{T}, p::Int) where {D,T}
     D::Int
@@ -808,8 +965,7 @@ extended_trimmed_polynomial_complex
 
 This is experimental; note that this is not actually a complex.
 """
-function extended_trimmed_polynomial_complex(::Val{D}, ::Type{T},
-                                             p::Int) where {D,T}
+function extended_trimmed_polynomial_complex(::Val{D}, ::Type{T}, p::Int) where {D,T}
     D::Int
     @assert 0 <= D
     @assert p >= -1
@@ -869,8 +1025,7 @@ function whitney(::Type{Basis{D1,R,Int}}) where {D1,R}
     @assert 1 <= D1
     @assert 0 <= R <= D1 - 1
     nelts = binomial(D1, R + 1)
-    forms = [whitney(Val(D1), Forms.lin2lst(Val(D1), Val(R + 1), n))
-             for n in 1:nelts]
+    forms = [whitney(Val(D1), Forms.lin2lst(Val(D1), Val(R + 1), n)) for n in 1:nelts]
     return Basis{D1,R,Int}(forms)
 end
 
