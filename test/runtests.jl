@@ -704,9 +704,5 @@ end
     tpc = trimmed_polynomial_complex(Val(D), Int, p)
     tpcR = tpc[R]
 
-    if !(ϕ == tpcR)
-        @show ϕ
-        @show tpcR
-    end
     @test ϕ == tpcR
 end
