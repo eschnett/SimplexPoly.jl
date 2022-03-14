@@ -1000,7 +1000,7 @@ whitney
 
 Calculate Whitney forms
 """
-function whitney(::Val{D1}, inds::SVector{N,Int}) where {D1,N}
+function whitney(::Val{D1}, ::Type{T}, inds::SVector{N,Int}) where {D1,T,N}
     D1::Int
     N::Int
     @assert 1 <= D1
@@ -1008,28 +1008,30 @@ function whitney(::Val{D1}, inds::SVector{N,Int}) where {D1,N}
     R = N - 1
     @assert all(1 <= inds[n] <= D1 for n in 1:N)
     @assert all(inds[n] < inds[n + 1] for n in 1:(N - 1))
-    ϕ = zero(Form{D1,R,Poly{D1,Int}})
+    ϕ = zero(Form{D1,R,Poly{D1,T}})
     q = factorial(N - 1)
     for n in 1:N
         inds′ = deleteat(inds, n)
-        f = unit(Form{D1,R,Int}, inds′)
-        p = q * bitsign(n - 1) * unit(Poly{D1,Int}, inds[n])
+        f = unit(Form{D1,R,T}, inds′)
+        p = q * bitsign(n - 1) * unit(Poly{D1,T}, inds[n])
         ϕ += p * f
     end
-    return ϕ::Form{D1,R,Poly{D1,Int}}
+    return ϕ::Form{D1,R,Poly{D1,T}}
 end
-function whitney(::Val{D1}, inds::NTuple{N,Int}) where {D1,N}
-    return whitney(Val(D1), SVector{N,Int}(inds))
+function whitney(::Val{D1}, ::Type{T}, inds::NTuple{N,Int}) where {D1,T,N}
+    return whitney(Val(D1), T, SVector{N,Int}(inds))
 end
-function whitney(::Type{Basis{D1,R,Int}}) where {D1,R}
+function whitney(::Type{Basis{D1,R,T}}) where {D1,R,T}
     D1::Int
     R::Int
     @assert 1 <= D1
     @assert 0 <= R <= D1 - 1
     nelts = binomial(D1, R + 1)
-    forms = [whitney(Val(D1), Forms.lin2lst(Val(D1), Val(R + 1), n)) for n in 1:nelts]
-    return Basis{D1,R,Int}(forms)
+    forms = [whitney(Val(D1), T, Forms.lin2lst(Val(D1), Val(R + 1), n)) for n in 1:nelts]
+    return Basis{D1,R,T}(forms)
 end
+whitney(d::Val, inds::SVector) = whitney(d, Int, inds)
+whitney(d::Val, inds::NTuple) = whitney(d, Int, inds)
 
 export whitney_support
 """
