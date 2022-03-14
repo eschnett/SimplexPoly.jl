@@ -639,20 +639,22 @@ function normalize(form::Form{D,R,Poly{D,T}}) where {D,R,T<:Rational}
 end
 
 function gram_schmidt(forms::Vector{<:Form{D,R,T}}) where {D,R,T}
-    @show :gram_schmidt forms
+    # @show :gram_schmidt forms
     ortho_forms = fulltype(Form{D,R,T})[]
     for form in forms
-        @show :loop form
+        # @show :loop form
         for oform in ortho_forms
             ovlp = oform ⋅ form
             scal = oform ⋅ oform
-            @show ovlp scal
+            # @show ovlp scal
             form = normalize(scal * form - ovlp * oform)
-            @show form
+            # @show form
         end
         if !iszero(form)
             for oform in ortho_forms
-                @show :assert oform form oform ⋅ form
+                if !(iszero(oform ⋅ form))
+                    @show :assert oform form oform ⋅ form
+                end
                 @assert iszero(oform ⋅ form)
             end
             push!(ortho_forms, form)
