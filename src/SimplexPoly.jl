@@ -742,7 +742,7 @@ function is_in_span(form::Form{D,R,Poly{D,T}}, forms::Vector{<:Form{D,R,Poly{D,T
     if T <: Integer
         # Use floating point numbers for integer polynomials
         avec = float.(bmat) \ float.(fvec)
-        avec = rationalize.(avec; tol=1e3 * eps())
+        avec = rationalize.(BigInt, avec; tol=1e3 * eps())
     else
         @assert false
     end
