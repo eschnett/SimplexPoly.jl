@@ -670,7 +670,7 @@ end
 @testset "Whitney forms D=$D R=$R" for D in 0:Dmax, R in 0:D
     T = Int64
 
-    ϕ = whitney(Basis{D + 1,R,Int})
+    ϕ = whitney(Basis{D + 1,R,T})
     @test length(ϕ.forms) == binomial(D + 1, R + 1)
 
     for n in 1:length(ϕ.forms)
@@ -683,7 +683,7 @@ end
 @testset "Convert from barycentric to Cartesian coordinates D=$D R=$R" for D in 0:Dmax, R in 0:D
     T = Int64
 
-    ϕ = whitney(Basis{D + 1,R,Int})
+    ϕ = whitney(Basis{D + 1,R,T})
     @test length(ϕ.forms) == binomial(D + 1, R + 1)
     ϕx = barycentric2cartesian(ϕ)
 
@@ -698,7 +698,7 @@ end
     T = Int64
     p = 1                       # Whitney basis is equivalent to p=1
 
-    ϕλ = whitney(Basis{D + 1,R,Int})
+    ϕλ = whitney(Basis{D + 1,R,T})
     ϕ = barycentric2cartesian(ϕλ)
 
     tpc = trimmed_polynomial_complex(Val(D), T, p)
