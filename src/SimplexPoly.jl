@@ -290,7 +290,7 @@ function Forms.unit(::Type{Poly{D,T}}, dir::Int, coeff=one(T)) where {D,T}
     D::Int
     @assert D >= 0
     @assert 1 <= dir <= D
-    term = Term{D,T}(SVector{D,T}(d == dir for d in 1:D), coeff)
+    term = Term{D,T}(SVector{D,Int}(d == dir for d in 1:D), coeff)
     return Poly{D,T}([term])
 end
 
