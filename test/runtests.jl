@@ -24,7 +24,7 @@ function Base.rand(rng::AbstractRNG, ::Random.SamplerType{Term{D,T}}) where {D,T
 end
 
 @testset "Terms as vector space D=$D" for D in 0:Dmax
-    T = Int
+    T = Int64
 
     for iter in 1:100
         x = rand(Term{D,T})
@@ -72,7 +72,7 @@ end
 end
 
 @testset "Terms as ring D=$D" for D in 0:Dmax
-    T = Int
+    T = Int64
 
     for iter in 1:100
         n = zero(Term{D,T})
@@ -112,7 +112,7 @@ end
 end
 
 @testset "Derivatives of terms D=$D" for D in 1:Dmax
-    T = Int
+    T = Int64
 
     e = one(Term{D,T})
     for dir in 1:D
@@ -163,7 +163,7 @@ function Base.rand(rng::AbstractRNG, ::Random.SamplerType{Poly{D,T}}) where {D,T
 end
 
 @testset "Polynomials D=$D" for D in 0:Dmax
-    T = Int
+    T = Int64
 
     e = one(Poly{D,T})
     for dir in 1:D
@@ -284,7 +284,7 @@ function Base.rand(rng::AbstractRNG, ::Random.SamplerType{PolySpace{D,T}}) where
 end
 
 @testset "Polynomial spaces D=$D" for D in 0:Dmax
-    T = Int
+    T = Int64
 
     for iter in 1:100
         ps = rand(PolySpace{D,T})
@@ -338,7 +338,7 @@ end
 ################################################################################
 
 @testset "Polynomial forms as vector space D=$D R=$R" for D in 0:Dmax, R in 0:D
-    T = Int
+    T = Int64
 
     for iter in 1:100
         n = zero(Form{D,R,Poly{D,T}})
@@ -385,7 +385,7 @@ end
 end
 
 @testset "Polynomial forms as ring D=$D" for D in 0:Dmax
-    T = Int
+    T = Int64
 
     for iter in 1:100
         Rn = rand(0:D)
@@ -430,7 +430,7 @@ end
 end
 
 @testset "Derivatives of polynomial forms D=$D" for D in 0:Dmax
-    T = Int
+    T = Int64
 
     for iter in 1:100
         Rx = rand(0:D)
@@ -517,7 +517,7 @@ end
 ################################################################################
 
 @testset "Convert polynomial forms to vectors D=$D R=$R" for D in 0:min(5, Dmax), R in 0:D
-    T = Int
+    T = Int64
 
     for iter in 1:100
         x = rand(Form{D,R,Poly{D,T}})
@@ -565,7 +565,7 @@ function test_basis(basis::Basis{D,R,T}) where {D,R,T}
 end
 
 @testset "Bases D=$D R=$R p=$p" for D in 0:Dmax, R in 0:D, p in 0:max(2, 5 - D)
-    T = Int
+    T = Int64
 
     # feec-icerm-lecture3, page 23
     # n = D
@@ -597,11 +597,11 @@ function pc_length(D::Int, p::Int, R::Int)
 end
 
 @testset "Complexes D=$D p=$p" for D in 0:Dmax, p in 1:max(2, 5 - D)
-    T = Int
+    T = Int64
 
-    pc = polynomial_complex(Val(D), Int, p)
-    tpc = trimmed_polynomial_complex(Val(D), Int, p)
-    epc = extended_trimmed_polynomial_complex(Val(D), Int, p)
+    pc = polynomial_complex(Val(D), T, p)
+    tpc = trimmed_polynomial_complex(Val(D), T, p)
+    epc = extended_trimmed_polynomial_complex(Val(D), T, p)
 
     @test Set(keys(pc)) == Set(0:D)
     @test Set(keys(tpc)) == Set(0:D)
@@ -668,7 +668,7 @@ end
 ################################################################################
 
 @testset "Whitney forms D=$D R=$R" for D in 0:Dmax, R in 0:D
-    T = Int
+    T = Int64
 
     ϕ = whitney(Basis{D + 1,R,Int})
     @test length(ϕ.forms) == binomial(D + 1, R + 1)
@@ -681,7 +681,7 @@ end
 end
 
 @testset "Convert from barycentric to Cartesian coordinates D=$D R=$R" for D in 0:Dmax, R in 0:D
-    T = Int
+    T = Int64
 
     ϕ = whitney(Basis{D + 1,R,Int})
     @test length(ϕ.forms) == binomial(D + 1, R + 1)
@@ -695,13 +695,13 @@ end
 end
 
 @testset "Compare Whitney basis to trimmed p=1 basis D=$D R=$R" for D in 0:Dmax, R in 0:D
-    T = Int
+    T = Int64
     p = 1                       # Whitney basis is equivalent to p=1
 
     ϕλ = whitney(Basis{D + 1,R,Int})
     ϕ = barycentric2cartesian(ϕλ)
 
-    tpc = trimmed_polynomial_complex(Val(D), Int, p)
+    tpc = trimmed_polynomial_complex(Val(D), T, p)
     tpcR = tpc[R]
 
     @test ϕ == tpcR
