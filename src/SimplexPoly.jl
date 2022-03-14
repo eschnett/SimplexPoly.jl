@@ -1021,6 +1021,8 @@ end
 function whitney(::Val{D1}, ::Type{T}, inds::NTuple{N,Int}) where {D1,T,N}
     return whitney(Val(D1), T, SVector{N,Int}(inds))
 end
+whitney(d::Val, inds::SVector) = whitney(d, Int, inds)
+whitney(d::Val, inds::NTuple) = whitney(d, Int, inds)
 function whitney(::Type{Basis{D1,R,T}}) where {D1,R,T}
     D1::Int
     R::Int
@@ -1030,8 +1032,6 @@ function whitney(::Type{Basis{D1,R,T}}) where {D1,R,T}
     forms = [whitney(Val(D1), T, Forms.lin2lst(Val(D1), Val(R + 1), n)) for n in 1:nelts]
     return Basis{D1,R,T}(forms)
 end
-whitney(d::Val, inds::SVector) = whitney(d, Int, inds)
-whitney(d::Val, inds::NTuple) = whitney(d, Int, inds)
 
 export whitney_support
 """
