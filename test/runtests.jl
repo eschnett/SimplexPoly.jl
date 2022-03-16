@@ -19,15 +19,15 @@ Random.seed!(0)
 
 # Random terms
 const maxrandpower = 5
-function Base.rand(rng::AbstractRNG, ::Random.SamplerType{Term{D,T}}) where {D,T}
-    return Term{D,T}(SVector{D,Int}(rand(rng, 0:maxrandpower, D)), T(rand(rng, -10:10)))
+function Base.rand(rng::AbstractRNG, ::Random.SamplerType{Term{P,D,T}}) where {P,D,T}
+    return Term{P,D,T}(SVector{D,Int}(rand(rng, 0:maxrandpower, D)), T(rand(rng, -10:10)))
 end
 
-@testset "Terms as vector space D=$D" for D in 0:Dmax
+@testset "Terms as vector space P=$P D=$D" for P in [Pow], D in 0:Dmax
     T = Int64
 
     for iter in 1:100
-        x = rand(Term{D,T})
+        x = rand(Term{P,D,T})
         n = map(c -> zero(T), x)
         y = map(c -> T(rand(-10:10)), x)
         z = map(c -> T(rand(-10:10)), x)
@@ -71,16 +71,16 @@ end
     end
 end
 
-@testset "Terms as ring D=$D" for D in 0:Dmax
+@testset "Terms as ring P=$P D=$D" for P in [Pow], D in 0:Dmax
     T = Int64
 
     for iter in 1:100
-        n = zero(Term{D,T})
-        e = one(Term{D,T})
-        x = rand(Term{D,T})
+        n = zero(Term{P,D,T})
+        e = one(Term{P,D,T})
+        x = rand(Term{P,D,T})
         x′ = map(c -> T(rand(-10:10)), x)
-        y = rand(Term{D,T})
-        z = rand(Term{D,T})
+        y = rand(Term{P,D,T})
+        z = rand(Term{P,D,T})
         a = T(rand(-10:10))
         b = T(rand(-10:10))
         i = rand(0:10)
@@ -111,17 +111,17 @@ end
     end
 end
 
-@testset "Derivatives of terms D=$D" for D in 1:Dmax
+@testset "Derivatives of terms P=$P D=$D" for P in [Pow], D in 1:Dmax
     T = Int64
 
-    e = one(Term{D,T})
+    e = one(Term{P,D,T})
     for dir in 1:D
         @test iszero(deriv(e, dir))
     end
     @test integral(e) == 1 // factorial(D)
 
     for iter in 1:100
-        x = rand(Term{D,T})
+        x = rand(Term{P,D,T})
         n = map(c -> zero(T), x)
         y = map(c -> T(rand(-10:10)), x)
         a = T(rand(-10:10))
@@ -157,26 +157,26 @@ end
 ################################################################################
 
 # Random polynomials
-function Base.rand(rng::AbstractRNG, ::Random.SamplerType{Poly{D,T}}) where {D,T}
+function Base.rand(rng::AbstractRNG, ::Random.SamplerType{Poly{P,D,T}}) where {P,D,T}
     n = rand(0:5)
-    return Poly{D,T}(rand(rng, Term{D,T}, n))
+    return Poly{P,D,T}(rand(rng, Term{P,D,T}, n))
 end
 
-@testset "Polynomials D=$D" for D in 0:Dmax
+@testset "Polynomials P=$P D=$D" for P in [Pow], D in 0:Dmax
     T = Int64
 
-    e = one(Poly{D,T})
+    e = one(Poly{P,D,T})
     for dir in 1:D
         @test iszero(deriv(e, dir))
     end
     @test integral(e) == 1 // factorial(D)
 
     for iter in 1:100
-        n = zero(Poly{D,T})
-        e = one(Poly{D,T})
-        x = rand(Poly{D,T})
-        y = rand(Poly{D,T})
-        z = rand(Poly{D,T})
+        n = zero(Poly{P,D,T})
+        e = one(Poly{P,D,T})
+        x = rand(Poly{P,D,T})
+        y = rand(Poly{P,D,T})
+        z = rand(Poly{P,D,T})
         a = T(rand(-10:10))
         b = T(rand(-10:10))
         i = rand(0:5)
@@ -250,7 +250,7 @@ end
             dx = deriv(x, dir)
             @test deriv(n, dir) == n
             @test deriv(e, dir) == n
-            @test deriv(unit(Poly{D,T}, dir), dir) == e
+            @test deriv(unit(Poly{P,D,T}, dir), dir) == e
             @test deriv(x + y, dir) == deriv(x, dir) + deriv(y, dir)
             @test deriv(a * x, dir) == a * deriv(x, dir)
 
@@ -258,7 +258,7 @@ end
 
             κx = koszul(x, dir)
             @test koszul(n, dir) == n
-            @test koszul(e, dir) == unit(Poly{D,T}, dir)
+            @test koszul(e, dir) == unit(Poly{P,D,T}, dir)
             @test koszul(x + y, dir) == koszul(x, dir) + koszul(y, dir)
             @test koszul(a * x, dir) == a * koszul(x, dir)
 
@@ -276,21 +276,21 @@ end
 ################################################################################
 
 # Random polynomial spaces
-function Base.rand(rng::AbstractRNG, ::Random.SamplerType{PolySpace{D,T}}) where {D,T}
+function Base.rand(rng::AbstractRNG, ::Random.SamplerType{PolySpace{P,D,T}}) where {P,D,T}
     n = rand(0:5)
-    ps = rand(rng, Poly{D,T}, n)
+    ps = rand(rng, Poly{P,D,T}, n)
     ps = filter(p -> !iszero(p), ps)
-    return PolySpace{D,T}(ps)
+    return PolySpace{P,D,T}(ps)
 end
 
-@testset "Polynomial spaces D=$D" for D in 0:Dmax
+@testset "Polynomial spaces P=$P D=$D" for P in [Pow], D in 0:Dmax
     T = Int64
 
     for iter in 1:100
-        ps = rand(PolySpace{D,T})
-        qs = rand(PolySpace{D,T})
-        rs = rand(PolySpace{D,T})
-        ns = PolySpace{D,T}()
+        ps = rand(PolySpace{P,D,T})
+        qs = rand(PolySpace{P,D,T})
+        rs = rand(PolySpace{P,D,T})
+        ns = PolySpace{P,D,T}()
         a = rand(-10:10)
         b = rand(-10:10)
 
@@ -337,21 +337,21 @@ end
 ################################################################################
 ################################################################################
 
-@testset "Polynomial forms as vector space D=$D R=$R" for D in 0:Dmax, R in 0:D
+@testset "Polynomial forms as vector space D=$D R=$R P=$P" for D in 0:Dmax, R in 0:D, P in [Pow]
     T = Int64
 
     for iter in 1:100
-        n = zero(Form{D,R,Poly{D,T}})
-        x = rand(Form{D,R,Poly{D,T}})
-        x′ = rand(Form{D,R,Poly{D,T}})
-        y = rand(Form{D,R,Poly{D,T}})
-        z = rand(Form{D,R,Poly{D,T}})
+        n = zero(Form{D,R,Poly{P,D,T}})
+        x = rand(Form{D,R,Poly{P,D,T}})
+        x′ = rand(Form{D,R,Poly{P,D,T}})
+        y = rand(Form{D,R,Poly{P,D,T}})
+        z = rand(Form{D,R,Poly{P,D,T}})
         a = T(rand(-10:10))
         b = T(rand(-10:10))
-        pn = zero(Poly{D,T})
-        pe = one(Poly{D,T})
-        p = rand(Poly{D,T})
-        q = rand(Poly{D,T})
+        pn = zero(Poly{P,D,T})
+        pe = one(Poly{P,D,T})
+        p = rand(Poly{P,D,T})
+        q = rand(Poly{P,D,T})
 
         @test n == n
 
@@ -384,7 +384,7 @@ end
     end
 end
 
-@testset "Polynomial forms as ring D=$D" for D in 0:Dmax
+@testset "Polynomial forms as ring P=$P D=$D" for P in [Pow], D in 0:Dmax
     T = Int64
 
     for iter in 1:100
@@ -392,14 +392,14 @@ end
         Rx = rand(0:D)
         Ry = rand(0:D)
         Rz = rand(0:D)
-        n = zero(Form{D,Rn,Poly{D,T}})
-        e = one(Form{D,0,Poly{D,T}})
-        x = rand(Form{D,Rx,Poly{D,T}})
-        x′ = rand(Form{D,Rx,Poly{D,T}})
-        y = rand(Form{D,Ry,Poly{D,T}})
-        z = rand(Form{D,Rz,Poly{D,T}})
+        n = zero(Form{D,Rn,Poly{P,D,T}})
+        e = one(Form{D,0,Poly{P,D,T}})
+        x = rand(Form{D,Rx,Poly{P,D,T}})
+        x′ = rand(Form{D,Rx,Poly{P,D,T}})
+        y = rand(Form{D,Ry,Poly{P,D,T}})
+        z = rand(Form{D,Rz,Poly{P,D,T}})
         a = T(rand(-10:10))
-        p = rand(Poly{D,T})
+        p = rand(Poly{P,D,T})
 
         @test e == e
         @test iszero(n)
@@ -429,16 +429,16 @@ end
     end
 end
 
-@testset "Derivatives of polynomial forms D=$D" for D in 0:Dmax
+@testset "Derivatives of polynomial forms P=$P D=$D" for P in [Pow], D in 0:Dmax
     T = Int64
 
     for iter in 1:100
         Rx = rand(0:D)
         Ry = rand(0:D)
-        n = zero(Form{D,Rx,Poly{D,T}})
-        x = rand(Form{D,Rx,Poly{D,T}})
-        x2 = rand(Form{D,Rx,Poly{D,T}})
-        y = rand(Form{D,Ry,Poly{D,T}})
+        n = zero(Form{D,Rx,Poly{P,D,T}})
+        x = rand(Form{D,Rx,Poly{P,D,T}})
+        x2 = rand(Form{D,Rx,Poly{P,D,T}})
+        y = rand(Form{D,Ry,Poly{P,D,T}})
         a = T(rand(-10:10))
 
         if Rx <= D - 1
@@ -472,11 +472,11 @@ end
                 for d in dims
                     powers[d] += 1
                 end
-                return Term{D,T}(SVector{D,Int}(powers), T(rand(-10:10)))
+                return Term{P,D,T}(SVector{D,Int}(powers), T(rand(-10:10)))
             end
             function mkpoly()
                 q = rand(0:5)
-                return Poly{D,T}(Term{D,T}[mkterm() for i in 1:q])
+                return Poly{P,D,T}(Term{P,D,T}[mkterm() for i in 1:q])
             end
             function mkform()
                 N = binomial(Val(D), Val(Rz))
@@ -516,13 +516,13 @@ end
 
 ################################################################################
 
-@testset "Convert polynomial forms to vectors D=$D R=$R" for D in 0:min(5, Dmax), R in 0:D
+@testset "Convert polynomial forms to vectors D=$D R=$R P=$P" for D in 0:min(5, Dmax), R in 0:D, P in [Pow]
     T = Int64
 
     for iter in 1:100
-        x = rand(Form{D,R,Poly{D,T}})
-        y = rand(Form{D,R,Poly{D,T}})
-        n = zero(Form{D,R,Poly{D,T}})
+        x = rand(Form{D,R,Poly{P,D,T}})
+        y = rand(Form{D,R,Poly{P,D,T}})
+        n = zero(Form{D,R,Poly{P,D,T}})
         a = rand(-10:10)
 
         @test maxpower(n) == 0
@@ -539,9 +539,9 @@ end
 
     for iter in 1:10
         ncols = rand(1:5)
-        xs = [rand(Form{D,R,Poly{D,T}}) for j in 1:ncols]
-        ys = [rand(Form{D,R,Poly{D,T}}) for j in 1:ncols]
-        ns = [zero(Form{D,R,Poly{D,T}}) for j in 1:ncols]
+        xs = [rand(Form{D,R,Poly{P,D,T}}) for j in 1:ncols]
+        ys = [rand(Form{D,R,Poly{P,D,T}}) for j in 1:ncols]
+        ns = [zero(Form{D,R,Poly{P,D,T}}) for j in 1:ncols]
         a = rand(-10:10)
 
         @test maxpower(ns) == 0
@@ -556,7 +556,7 @@ end
 
 ################################################################################
 
-function test_basis(basis::Basis{D,R,T}) where {D,R,T}
+function test_basis(basis::Basis{P,D,R,T}) where {P,D,R,T}
     prebasis = zero(basis)
     for f in basis.forms
         @test f ∉ prebasis
@@ -564,7 +564,7 @@ function test_basis(basis::Basis{D,R,T}) where {D,R,T}
     end
 end
 
-@testset "Bases D=$D R=$R p=$p" for D in 0:Dmax, R in 0:D, p in 0:max(2, 5 - D)
+@testset "Bases P=$P D=$D R=$R p=$p" for P in [Pow], D in 0:Dmax, R in 0:D, p in 0:max(2, 5 - D)
     T = Int64
 
     # feec-icerm-lecture3, page 23
@@ -572,13 +572,13 @@ end
     # r = p
     # k = R
 
-    fb = full_basis(Basis{D,R,T}, p)
+    fb = full_basis(Basis{P,D,R,T}, p)
     @test length(fb.forms) == binomial(p + D, p) * binomial(D, R)
     if D < 6
         test_basis(fb)
     end
 
-    hb = homogeneous_basis(Basis{D,R,T}, p)
+    hb = homogeneous_basis(Basis{P,D,R,T}, p)
     @test length(hb.forms) == binomial(p + D - 1, p) * binomial(D, R)
     if D < 6
         test_basis(hb)
@@ -596,21 +596,21 @@ function pc_length(D::Int, p::Int, R::Int)
     return binomial(p - R + D, p) * binomial(p, R)
 end
 
-@testset "Complexes D=$D p=$p" for D in 0:Dmax, p in 1:max(2, 5 - D)
+@testset "Complexes P=$P D=$D p=$p" for P in [Pow], D in 0:Dmax, p in 1:max(2, 5 - D)
     T = Int64
 
-    pc = polynomial_complex(Val(D), T, p)
-    tpc = trimmed_polynomial_complex(Val(D), T, p)
-    epc = extended_trimmed_polynomial_complex(Val(D), T, p)
+    pc = polynomial_complex(P, Val(D), T, p)
+    tpc = trimmed_polynomial_complex(P, Val(D), T, p)
+    epc = extended_trimmed_polynomial_complex(P, Val(D), T, p)
 
     @test Set(keys(pc)) == Set(0:D)
     @test Set(keys(tpc)) == Set(0:D)
     @test Set(keys(epc)) == Set(0:D)
 
     for R in 0:D
-        @test pc[R] isa Basis{D,R,T}
-        @test tpc[R] isa Basis{D,R,T}
-        @test epc[R] isa Basis{D,R,T}
+        @test pc[R] isa Basis{P,D,R,T}
+        @test tpc[R] isa Basis{P,D,R,T}
+        @test epc[R] isa Basis{P,D,R,T}
 
         test_basis(pc[R])
         test_basis(tpc[R])
@@ -623,8 +623,8 @@ end
         end
         @test length(tpc[R]) == tpc_length(D, p, R)
 
-        fb = full_basis(Basis{D,R,T}, p)
-        fb1 = full_basis(Basis{D,R,T}, p - 1)
+        fb = full_basis(Basis{P,D,R,T}, p)
+        fb1 = full_basis(Basis{P,D,R,T}, p - 1)
 
         if R != 0 && R != D
             @test issubset(fb1, tpc[R])
@@ -667,41 +667,41 @@ end
 
 ################################################################################
 
-@testset "Whitney forms D=$D R=$R" for D in 0:Dmax, R in 0:D
+@testset "Whitney forms P=$P, D=$D R=$R" for P in [Pow], D in 0:Dmax, R in 0:D
     T = Int64
 
-    ϕ = whitney(Basis{D + 1,R,T})
+    ϕ = whitney(Basis{P,D + 1,R,T})
     @test length(ϕ.forms) == binomial(D + 1, R + 1)
 
     for n in 1:length(ϕ.forms)
         ϕₙ = ϕ.forms[n]
-        ϕ′ = Basis{D + 1,R,T}([ϕ.forms[1:(n - 1)]; ϕ.forms[(n + 1):end]])
+        ϕ′ = Basis{P,D + 1,R,T}([ϕ.forms[1:(n - 1)]; ϕ.forms[(n + 1):end]])
         @test !(ϕₙ in ϕ′)
     end
 end
 
-@testset "Convert from barycentric to Cartesian coordinates D=$D R=$R" for D in 0:Dmax, R in 0:D
+@testset "Convert from barycentric to Cartesian coordinates P=$P D=$D R=$R" for P in [Pow], D in 0:Dmax, R in 0:D
     T = Int64
 
-    ϕ = whitney(Basis{D + 1,R,T})
+    ϕ = whitney(Basis{P,D + 1,R,T})
     @test length(ϕ.forms) == binomial(D + 1, R + 1)
     ϕx = barycentric2cartesian(ϕ)
 
     for n in 1:length(ϕx.forms)
         ϕₙ = ϕx.forms[n]
-        ϕx′ = Basis{D,R,T}([ϕx.forms[1:(n - 1)]; ϕx.forms[(n + 1):end]])
+        ϕx′ = Basis{P,D,R,T}([ϕx.forms[1:(n - 1)]; ϕx.forms[(n + 1):end]])
         @test !(ϕₙ in ϕx′)
     end
 end
 
-@testset "Compare Whitney basis to trimmed p=1 basis D=$D R=$R" for D in 0:Dmax, R in 0:D
+@testset "Compare Whitney basis to trimmed p=1 basis P=$P D=$D R=$R" for P in [Pow], D in 0:Dmax, R in 0:D
     T = Int64
     p = 1                       # Whitney basis is equivalent to p=1
 
-    ϕλ = whitney(Basis{D + 1,R,T})
+    ϕλ = whitney(Basis{P,D + 1,R,T})
     ϕ = barycentric2cartesian(ϕλ)
 
-    tpc = trimmed_polynomial_complex(Val(D), T, p)
+    tpc = trimmed_polynomial_complex(P, Val(D), T, p)
     tpcR = tpc[R]
 
     @test ϕ == tpcR
