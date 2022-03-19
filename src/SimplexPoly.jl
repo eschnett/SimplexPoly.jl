@@ -8,6 +8,11 @@ using StaticArrays
 
 ################################################################################
 
+div_complex(x::Complex, y) = Complex(real(x) ÷ y, imag(x) ÷ y)
+rationalize_complex(T, x::Complex; kws...) = Complex(rationalize(T, real(x); kws...), rationalize(T, imag(x); kws...))
+
+################################################################################
+
 abstract type PType end
 # x^k
 struct Pow <: PType end
@@ -55,8 +60,13 @@ end
 Base.:(==)(x::Term{P,D}, y::Term{P,D}) where {P,D} = x.powers == y.powers && x.coeff == y.coeff
 
 Base.isequal(x::Term, y::Term) = isequal((ptype(x), x.powers, x.coeff), (ptype(y), y.powers, y.coeff))
-Base.isless(x::Term, y::Term) = isless((ptype(x), x.powers, x.coeff), (ptype(y), y.powers, y.coeff))
-Base.hash(x::Term, h::UInt) = hash((ptype(x), x.powers, x.coeff), hash(0x11325cd9, h))
+function Base.isless(x::Term{P,D,<:Real} where {P,D}, y::Term{P,D,<:Real} where {P,D})
+    return isless((ptype(x), x.powers, x.coeff), (ptype(y), y.powers, y.coeff))
+end
+function Base.isless(x::Term{P,D,<:Complex} where {P,D}, y::Term{P,D,<:Complex} where {P,D})
+    return isless((ptype(x), x.powers, real(x.coeff), imag(x.coeff)), (ptype(y), y.powers, real(y.coeff), imag(y.coeff)))
+end
+Base.isless(x::Term, y::Term) = error()
 export compare
 function compare(x::Term, y::Term)
     # Note reversed signs; we want (1,0) < (0,1)
@@ -106,14 +116,23 @@ function Base.:^(x::Term, n::Integer)
 end
 
 export deriv
-function deriv(term::Term{P,D}, dir::Int) where {P,D}
-    @assert P ≡ Pow
+function deriv(term::Term{Pow,D}, dir::Int) where {D}
     D::Int
     @assert D >= 0
     @assert 1 <= dir <= D
     p = term.powers[dir]
     p == 0 && return zero(term)
-    return Term{P,D}(Base.setindex(term.powers, p - 1, dir), p * term.coeff)
+    # D[x^p] = p x^(p-1)
+    return Term{Pow,D}(Base.setindex(term.powers, p - 1, dir), p * term.coeff)
+end
+function deriv(term::Term{Exp,D}, dir::Int) where {D}
+    D::Int
+    @assert D >= 0
+    @assert 1 <= dir <= D
+    p = term.powers[dir]
+    p == 0 && return zero(term)
+    # D[exp(i p x)] = i p exp(i p x)
+    return Term{Exp,D}(Base.setindex(term.powers, p, dir), im * p * term.coeff)
 end
 
 """
@@ -128,19 +147,32 @@ Acta Numerica 15, 1-155 (2006), DOI:10.1017/S0962492906210018.
 function koszul end
 
 export koszul
-function koszul(term::Term{P,D}, dir::Int) where {P,D}
-    @assert P ≡ Pow
+function koszul(term::Term{Pow,D}, dir::Int) where {D}
     D::Int
     @assert D >= 0
     @assert 1 <= dir <= D
     p = term.powers[dir]
-    return Term{P,D}(Base.setindex(term.powers, p + 1, dir), term.coeff)
+    return Term{Pow,D}(Base.setindex(term.powers, p + 1, dir), term.coeff)
 end
+# function koszul(term::Term{Exp,D}, dir::Int) where {D}
+#     D::Int
+#     @assert D >= 0
+#     @assert 1 <= dir <= D
+#     p = term.powers[dir]
+#     return Term{Exp,D}(Base.setindex(term.powers, p, dir), term.coeff)
+# end
 
 export integral
-function integral(term::Term{P,D,T}) where {P,D,T}
-    @assert P ≡ Pow
-    R = T <: Union{Integer,Rational} ? Rational{BigInt} : T <: AbstractFloat ? T : Nothing
+function integral(term::Term{Pow,D,T}) where {D,T}
+    if T <: Real
+        R = T <: Union{Integer,Rational} ? Rational{BigInt} : T <: AbstractFloat ? T : Nothing
+    elseif T <: Complex
+        R = T <: Union{Complex{<:Integer},Complex{<:Rational}} ? Complex{Rational{BigInt}} :
+            T <: Complex{<:AbstractFloat} ? T : Nothing
+    else
+        R = Nothing
+    end
+    @assert R ≢ Nothing
     D == 0 && return R(term.coeff)
     # See <https://math.stackexchange.com/questions/207073/definite-integral-over-a-simplex>
     # We set ν₀ = 1 since the respective term is absent
@@ -160,6 +192,7 @@ struct Poly{P,D,T} <: Number
     end
 end
 Poly{P,D}(terms::Vector{Term{P,D,T}}) where {P,D,T} = Poly{P,D,T}(terms)
+Poly{P}(terms::Vector{Term{P,D,T}}) where {P,D,T} = Poly{P,D,T}(terms)
 Poly(terms::Vector{Term{P,D,T}}) where {P,D,T} = Poly{P,D,T}(terms)
 Base.convert(::Type{Poly{P,D,T}}, poly::Poly{P,D}) where {P,D,T} = map(x -> convert(T, x), poly)
 
@@ -320,12 +353,20 @@ function Base.:^(x::Poly, n::Integer)
     return r
 end
 
-deriv(poly::Poly, dir::Int) = Poly(map(t -> deriv(t, dir), poly.terms))
+deriv(poly::Poly{P}, dir::Int) where {P} = Poly{P}(map(t -> deriv(t, dir), poly.terms))
 
-koszul(poly::Poly, dir::Int) = Poly(map(t -> koszul(t, dir), poly.terms))
+koszul(poly::Poly{P}, dir::Int) where {P} = Poly{P}(map(t -> koszul(t, dir), poly.terms))
 
 function integral(poly::Poly{P,D,T}) where {P,D,T}
-    R = T <: Union{Integer,Rational} ? Rational{BigInt} : T <: AbstractFloat ? T : Nothing
+    if T <: Real
+        R = T <: Union{Integer,Rational} ? Rational{BigInt} : T <: AbstractFloat ? T : Nothing
+    elseif T <: Complex
+        R = T <: Union{Complex{<:Integer},Complex{<:Rational}} ? Complex{Rational{BigInt}} :
+            T <: Complex{<:AbstractFloat} ? T : Nothing
+    else
+        R = Nothing
+    end
+    @assert R ≢ Nothing
     isempty(poly.terms) && return zero(R)
     return sum(integral(term) for term in poly.terms)::R
 end
@@ -459,7 +500,15 @@ function integral(f::Form{D,R,Poly{P,D,T}}) where {D,R,P,T}
     D::Int
     R::Int
     @assert 0 <= R <= D
-    U = T <: Union{Integer,Rational} ? Rational{BigInt} : T <: AbstractFloat ? T : Nothing
+    if T <: Real
+        U = T <: Union{Integer,Rational} ? Rational{BigInt} : T <: AbstractFloat ? T : Nothing
+    elseif T <: Complex
+        U = T <: Union{Complex{<:Integer},Complex{<:Rational}} ? Complex{Rational{BigInt}} :
+            T <: Complex{<:AbstractFloat} ? T : Nothing
+    else
+        U = Nothing
+    end
+    @assert U ≢ Nothing
     return map(integral, f)::Form{D,R,U}
 end
 
@@ -611,6 +660,23 @@ function normalize(form::Form{D,R,Poly{P,D,T}}) where {D,R,P,T<:Integer}
     return r
 end
 
+function normalize(form::Form{D,R,Poly{P,D,T}}) where {D,R,P,T<:Complex{<:Integer}}
+    RT = typeof(real(zero(T)))
+    coeffs = RT[]
+    for poly in form
+        poly::Poly{P,D,T}
+        for term in poly.terms
+            term::Term{P,D,T}
+            real(term.coeff) ≠ 0 && push!(coeffs, real(term.coeff))
+            imag(term.coeff) ≠ 0 && push!(coeffs, imag(term.coeff))
+        end
+    end
+    isempty(coeffs) && return form
+    q = sign(coeffs[1]) * gcd(coeffs)
+    r = map(poly -> map(coeff -> div_complex(coeff, q), poly), form)
+    return r
+end
+
 function normalize(form::Form{D,R,Poly{P,D,T}}) where {D,R,P,T<:Rational}
     I = typeof(numerator(one(T)))
     coeffs = T[]
@@ -726,6 +792,10 @@ function is_in_span(form::Form{D,R,Poly{P,D,T}}, forms::Vector{<:Form{D,R,Poly{P
         # Use floating point numbers for integer polynomials
         avec = float.(bmat) \ float.(fvec)
         avec = rationalize.(BigInt, avec; tol=1e3 * eps())
+    elseif T <: Complex{<:Integer}
+        # Use floating point numbers for integer polynomials
+        avec = float.(bmat) \ float.(fvec)
+        avec = rationalize_complex.(BigInt, avec; tol=1e3 * eps())
     else
         @assert false
     end
