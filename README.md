@@ -8,7 +8,8 @@ forms that live on simplices.
 * [GitHub](https://github.com/eschnett/SimplexPoly.jl): Source code repository
 * [![GitHub
   CI](https://github.com/eschnett/SimplexPoly.jl/workflows/CI/badge.svg)](https://github.com/eschnett/SimplexPoly.jl/actions)
-* [![Codecov](https://codecov.io/gh/eschnett/SimplexPoly.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/eschnett/SimplexPoly.jl)
+* [![codecov](https://codecov.io/gh/eschnett/SimplexPoly.jl/branch/main/graph/badge.svg?token=QSDV4LBJWO)](https://codecov.io/gh/eschnett/SimplexPoly.jl)
+
 
 ## Overview
 
