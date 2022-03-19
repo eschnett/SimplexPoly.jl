@@ -14,8 +14,8 @@ forms that live on simplices.
 
 This package provides three main datatypes:
 
-- `Poly{D,T}`: Polynomials of type `T` of `D` unknowns
-- `Form{D,R,Poly{D,T}}`: Polynomial differential forms of rank `R`
+- `Poly{Pow,D,T}`: Polynomials of type `T` of `D` unknowns
+- `Form{D,R,Poly{Pow,D,T}}`: Polynomial differential forms of rank `R`
 - `Basis{D,R,T}`: A basis for a subspace of polynomial differential
   forms
 
@@ -50,7 +50,7 @@ on x and y.
 ```Julia
 julia> using SimplexPoly
 
-julia> pc = polynomial_complex(Val(2), Int, 2);
+julia> pc = polynomial_complex(Pow, Val(2), Int, 2);
 
 julia> pc[0]
 Basis{2,0,Int64}[
@@ -101,7 +101,7 @@ degree. All polynomials depend on x and y.
 ```Julia
 julia> using SimplexPoly
 
-julia> tpc = trimmed_polynomial_complex(Val(2), Int, 2);
+julia> tpc = trimmed_polynomial_complex(Pow, Val(2), Int, 2);
 
 julia> tpc[0]
 Basis{2,0,Int64}[
