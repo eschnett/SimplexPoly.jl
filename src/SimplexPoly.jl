@@ -123,7 +123,7 @@ function deriv(term::Term{Pow,D}, dir::Int) where {D}
     p = term.powers[dir]
     p == 0 && return zero(term)
     # D[x^p] = p x^(p-1)
-    return Term{Pow,D}(Base.setindex(term.powers, p - 1, dir), p * term.coeff)
+    return Term{Pow,D}(setindex(term.powers, p - 1, dir), p * term.coeff)
 end
 function deriv(term::Term{Exp,D}, dir::Int) where {D}
     D::Int
@@ -132,7 +132,7 @@ function deriv(term::Term{Exp,D}, dir::Int) where {D}
     p = term.powers[dir]
     p == 0 && return zero(term)
     # D[exp(i p x)] = i p exp(i p x)
-    return Term{Exp,D}(Base.setindex(term.powers, p, dir), im * p * term.coeff)
+    return Term{Exp,D}(setindex(term.powers, p, dir), im * p * term.coeff)
 end
 
 """
@@ -152,14 +152,14 @@ function koszul(term::Term{Pow,D}, dir::Int) where {D}
     @assert D >= 0
     @assert 1 <= dir <= D
     p = term.powers[dir]
-    return Term{Pow,D}(Base.setindex(term.powers, p + 1, dir), term.coeff)
+    return Term{Pow,D}(setindex(term.powers, p + 1, dir), term.coeff)
 end
 # function koszul(term::Term{Exp,D}, dir::Int) where {D}
 #     D::Int
 #     @assert D >= 0
 #     @assert 1 <= dir <= D
 #     p = term.powers[dir]
-#     return Term{Exp,D}(Base.setindex(term.powers, p, dir), term.coeff)
+#     return Term{Exp,D}(setindex(term.powers, p, dir), term.coeff)
 # end
 
 export integral
@@ -448,11 +448,11 @@ koszul(ps::PolySpace, dir::Int) = map(p -> koszul(p, dir), ps)
 
 ################################################################################
 
-function deriv(f::Form{D,R,Poly{P,D,T}}) where {D,R,P,T}
+function deriv(f::Form{D,R,T}) where {D,R,P,T}
     D::Int
     R::Int
     @assert 0 <= R < D
-    r = zero(Form{D,R + 1,Poly{P,D,T}})
+    r = zero(Form{D,R + 1,T})
     N = length(f)
     for n in 1:N
         bits = Forms.lin2bit(Val(D), Val(R), n)
@@ -463,20 +463,20 @@ function deriv(f::Form{D,R,Poly{P,D,T}}) where {D,R,P,T}
                     parity ⊻= bits[d]
                 end
                 s = bitsign(parity)
-                rbits = Base.setindex(bits, true, dir)
+                rbits = setindex(bits, true, dir)
                 rn = Forms.bit2lin(Val(D), Val(R + 1), rbits)
-                r = Base.setindex(r, r[rn] + s * deriv(f[n], dir), rn)
+                r = setindex(r, r[rn] + s * deriv(f[n], dir), rn)
             end
         end
     end
-    return r::Form{D,R + 1,Poly{P,D,T}}
+    return r::Form{D,R + 1,T}
 end
 
-function koszul(f::Form{D,R,Poly{P,D,T}}) where {D,R,P,T}
+function koszul(f::Form{D,R,T}) where {D,R,P,T}
     D::Int
     R::Int
     @assert 0 < R <= D
-    r = zero(Form{D,R - 1,Poly{P,D,T}})
+    r = zero(Form{D,R - 1,T})
     N = length(f)
     for n in 1:N
         bits = Forms.lin2bit(Val(D), Val(R), n)
@@ -487,13 +487,13 @@ function koszul(f::Form{D,R,Poly{P,D,T}}) where {D,R,P,T}
                     parity ⊻= bits[d]
                 end
                 s = bitsign(parity)
-                rbits = Base.setindex(bits, false, dir)
+                rbits = setindex(bits, false, dir)
                 rn = Forms.bit2lin(Val(D), Val(R - 1), rbits)
-                r = Base.setindex(r, r[rn] + s * koszul(f[n], dir), rn)
+                r = setindex(r, r[rn] + s * koszul(f[n], dir), rn)
             end
         end
     end
-    return r::Form{D,R - 1,Poly{P,D,T}}
+    return r::Form{D,R - 1,T}
 end
 
 function integral(f::Form{D,R,Poly{P,D,T}}) where {D,R,P,T}
@@ -523,12 +523,104 @@ end
 #     return r
 # end
 
+# The dot product of forms uses the wedge product and hodge dual.
+# These are not defined for polynomials. We thus roll our own dot
+# product which falls back onto the dot product for polynomials.
 LinearAlgebra.dot(f::Form{D,R,<:Poly}, g::Form{D,R,<:Poly}) where {D,R} = error("not implemented")
 function LinearAlgebra.dot(f::Form{D,R,Poly{P,D,T1}}, g::Form{D,R,Poly{P,D,T2}}) where {D,R,P,T1,T2}
-    T = typeof(zero(T1) * zero(T2))
+    T = typeof(zero(T1) ⋅ zero(T2))
     r = zero(T)
     for (fp, gp) in zip(f.elts, g.elts)
         r += (fp ⋅ gp)::T
+    end
+    return r::T
+end
+
+################################################################################
+
+export deriv1
+function deriv1(f::TensorForm{D,R1,R2,T}) where {D,R1,R2,P,T}
+    D::Int
+    R1::Int
+    R2::Int
+    @assert 0 <= R1 < D
+    @assert 0 <= R2 <= D
+    r = zero(Form{D,R1 + 1,fulltype(Form{D,R2,T})})
+    N = length(f.form)
+    for n in 1:N
+        bits = Forms.lin2bit(Val(D), Val(R1), n)
+        for dir in 1:D
+            if !bits[dir]
+                parity = false
+                for d in 1:(dir - 1)
+                    parity ⊻= bits[d]
+                end
+                s = bitsign(parity)
+                rbits = setindex(bits, true, dir)
+                rn = Forms.bit2lin(Val(D), Val(R1 + 1), rbits)
+                r = setindex(r, r[rn] + s * Form{D,R2,T}(deriv.(f.form[n], dir)), rn)
+            end
+        end
+    end
+    return TensorForm(r)::TensorForm{D,R1 + 1,R2,T}
+end
+
+export koszul1
+function koszul1(f::TensorForm{D,R1,R2,T}) where {D,R1,R2,P,T}
+    D::Int
+    R1::Int
+    R2::Int
+    @assert 0 < R1 <= D
+    @assert 0 <= R2 <= D
+    r = zero(Form{D,R1 - 1,fulltype(Form{D,R2,T})})
+    N = length(f.form)
+    for n in 1:N
+        bits = Forms.lin2bit(Val(D), Val(R1), n)
+        for dir in 1:D
+            if bits[dir]
+                parity = false
+                for d in 1:(dir - 1)
+                    parity ⊻= bits[d]
+                end
+                s = bitsign(parity)
+                rbits = setindex(bits, false, dir)
+                rn = Forms.bit2lin(Val(D), Val(R1 - 1), rbits)
+                r = setindex(r, r[rn] + s * Form{D,R2,T}(koszul.(f.form[n], dir)), rn)
+            end
+        end
+    end
+    return TensorForm(r)::TensorForm{D,R1 - 1,R2,T}
+end
+
+export deriv2
+function deriv2(f::TensorForm{D,R1,R2,T}) where {D,R1,R2,P,T}
+    D::Int
+    R1::Int
+    R2::Int
+    @assert 0 ≤ R1 ≤ D
+    @assert 0 ≤ R2 < D
+    return TensorForm(Form{D,R1,fulltype(Form{D,R2 + 1,T})}(deriv.(f.form)))::TensorForm{D,R1,R2 + 1,T}
+end
+
+export koszul2
+function koszul2(f::TensorForm{D,R1,R2,T}) where {D,R1,R2,P,T}
+    D::Int
+    R1::Int
+    R2::Int
+    @assert 0 ≤ R1 ≤ D
+    @assert 0 < R2 ≤ D
+    return TensorForm(Form{D,R1,fulltype(Form{D,R2 - 1,T})}(koszul.(f.form)))::TensorForm{D,R1,R2 - 1,T}
+end
+
+# LinearAlgebra.dot(f::TensorForm{D,R1,R2,<:Poly}, g::TensorForm{D,R1,R2,<:Poly}) where {D,R1,R2} = f.form ⋅ g.form
+LinearAlgebra.dot(f::TensorForm{D,R1,R2,<:Poly}, g::TensorForm{D,R1,R2,<:Poly}) where {D,R1,R2} = error("not implemented")
+function LinearAlgebra.dot(f::TensorForm{D,R1,R2,Poly{P,D,T1}}, g::TensorForm{D,R1,R2,Poly{P,D,T2}}) where {D,R1,R2,P,T1,T2}
+    T = typeof(zero(T1) ⋅ zero(T2))
+    r = zero(T)
+    for (fp1, gp1) in zip(f.form.elts, g.form.elts)
+        for (fp2, gp2) in zip(fp1.elts, gp1.elts)
+            r += (fp2 ⋅ gp2)::T
+        end
     end
     return r::T
 end

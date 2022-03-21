@@ -444,6 +444,7 @@ end
         p = rand(Poly{P,D,T})
 
         @test e == e
+        @test e != n
         @test iszero(n)
         @test isone(e)
         @test !iszero(e)
@@ -548,11 +549,230 @@ end
             end
         end
 
-        @test n ⋅ x == 0
+        @test iszero(n ⋅ x)
+
         xx = x ⋅ x
         @test isreal(xx)
         if iszero(x)
-            @test real(xx) == 0
+            @test xx == 0
+        else
+            @test real(xx) > 0
+        end
+        @test x ⋅ x2 isa Number
+        @test x ⋅ (a * x2) == a * (x ⋅ x2)
+        @test x ⋅ x2 == conj(x2 ⋅ x)
+    end
+end
+
+################################################################################
+
+@testset "Polynomial tensor forms as vector space D=$D R1=$R1 R2=$R2 P=$P T=$T" for D in 0:min(Dmax, 4),
+                                                                                    R1 in 0:D,
+                                                                                    R2 in 0:D,
+                                                                                    P in ptypes(),
+                                                                                    T in types(P)
+
+    for iter in 1:100
+        n = zero(TensorForm{D,R1,R2,Poly{P,D,T}})
+        x = rand(TensorForm{D,R1,R2,Poly{P,D,T}})
+        x′ = rand(TensorForm{D,R1,R2,Poly{P,D,T}})
+        y = rand(TensorForm{D,R1,R2,Poly{P,D,T}})
+        z = rand(TensorForm{D,R1,R2,Poly{P,D,T}})
+        a = T(rand(-10:10))
+        b = T(rand(-10:10))
+        pn = zero(Poly{P,D,T})
+        pe = one(Poly{P,D,T})
+        p = rand(Poly{P,D,T})
+        q = rand(Poly{P,D,T})
+
+        @test n == n
+
+        @test n + x == x
+        @test x + n == x
+        @test x + y == y + x
+        @test x + (y + z) == (x + y) + z
+        @test +x == x
+
+        @test x + (-x) == n
+        @test -(-x) == x
+        @test -n == n
+        @test x - y == x + (-y)
+
+        @test zero(T) * x == n
+        @test one(T) * x == x
+        @test (-one(T)) * x == -x
+        @test a * x == x * a
+        @test (a * b) * x == a * (b * x)
+        @test (a + b) * x == a * x + b * x
+        @test a * (x + y) == a * x + a * y
+
+        @test pn * x == n
+        @test pe * x == x
+        @test (-pe) * x == -x
+        @test p * x == x * p
+        @test (p * q) * x == p * (q * x)
+        @test (p + q) * x == p * x + q * x
+        @test p * (x + y) == p * x + p * y
+    end
+end
+
+@testset "Polynomial tensor forms as ring P=$P D=$D T=$T" for P in ptypes(), D in 0:min(Dmax, 4), T in types(P)
+    for iter in 1:100
+        R1n = rand(0:D)
+        R1x = rand(0:D)
+        R1y = rand(0:D)
+        R1z = rand(0:D)
+        R2n = rand(0:D)
+        R2x = rand(0:D)
+        R2y = rand(0:D)
+        R2z = rand(0:D)
+        n = zero(TensorForm{D,R1n,R2n,Poly{P,D,T}})
+        e = one(TensorForm{D,0,0,Poly{P,D,T}})
+        x = rand(TensorForm{D,R1x,R2x,Poly{P,D,T}})
+        x′ = rand(TensorForm{D,R1x,R2x,Poly{P,D,T}})
+        y = rand(TensorForm{D,R1y,R2y,Poly{P,D,T}})
+        z = rand(TensorForm{D,R1z,R2z,Poly{P,D,T}})
+        a = T(rand(-10:10))
+        p = rand(Poly{P,D,T})
+
+        @test e == e
+        @test e != n
+        @test iszero(n)
+        @test isone(e)
+        @test !iszero(e)
+        # @test !isone(n)
+
+        if R1n + R1x ≤ D && R2n + R2x ≤ D
+            @test iszero(n ∧ x)
+            @test iszero(x ∧ n)
+        end
+        @test e ∧ x == x
+        @test x ∧ e == x
+        if R1x + R1y ≤ D && R2x + R2y ≤ D
+            @test x ∧ y == bitsign(R1x * R1y) * bitsign(R2x * R2y) * (y ∧ x)
+        end
+        if R1x + R1y + R1z ≤ D && R2x + R2y + R2z ≤ D
+            @test x ∧ (y ∧ z) == (x ∧ y) ∧ z
+        end
+        if R1x + R1y ≤ D && R2x + R2y ≤ D
+            @test (a * x) ∧ y == a * (x ∧ y)
+            @test x ∧ (y * a) == (x ∧ y) * a
+            @test (p * x) ∧ y == p * (x ∧ y)
+            @test x ∧ (y * p) == (x ∧ y) * p
+            @test (x + x′) ∧ y == x ∧ y + x′ ∧ y
+        end
+    end
+end
+
+@testset "Derivatives of polynomial tensor forms P=$P D=$D T=$T" for P in ptypes(), D in 0:min(Dmax, 4), T in types(P)
+    for iter in 1:100
+        R1x = rand(0:D)
+        R1y = rand(0:D)
+        R2x = rand(0:D)
+        R2y = rand(0:D)
+        n = zero(TensorForm{D,R1x,R2x,Poly{P,D,T}})
+        x = rand(TensorForm{D,R1x,R2x,Poly{P,D,T}})
+        x2 = rand(TensorForm{D,R1x,R2x,Poly{P,D,T}})
+        y = rand(TensorForm{D,R1y,R2y,Poly{P,D,T}})
+        a = T(rand(-10:10))
+
+        if R1x ≤ D - 1
+            @test deriv1(x + x2) == deriv1(x) + deriv1(x2)
+            @test deriv1(a * x) == a * deriv1(x)
+        end
+        if R1x ≤ D && R1y ≤ D && R1x + R1y ≤ D - 1 && R2x + R2y ≤ D
+            @test deriv1(x ∧ y) == deriv1(x) ∧ y + bitsign(R1x) * x ∧ deriv1(y)
+        end
+        if R1x ≤ D - 2
+            @test iszero(deriv1(deriv1(x)))
+        end
+
+        if R2x ≤ D - 1
+            @test deriv2(x + x2) == deriv2(x) + deriv2(x2)
+            @test deriv2(a * x) == a * deriv2(x)
+        end
+        if R1x + R1y ≤ D && R2x + R2y ≤ D - 1
+            @test deriv2(x ∧ y) == deriv2(x) ∧ y + bitsign(R2x) * x ∧ deriv2(y)
+        end
+        if R2x ≤ D - 2
+            @test iszero(deriv2(deriv2(x)))
+        end
+
+        if P ≡ Pow
+            if 1 ≤ R1x
+                @test koszul1(x + x2) == koszul1(x) + koszul1(x2)
+                @test koszul1(a * x) == a * koszul1(x)
+            end
+            if 1 ≤ R1x && 1 ≤ R1y && R1x + R1y ≤ D && R1x + R1y ≤ D - 1 && R2x + R2y ≤ D
+                @test koszul1(x ∧ y) == koszul1(x) ∧ y + bitsign(R1x) * x ∧ koszul1(y)
+            end
+            if 2 ≤ R1x
+                @test iszero(koszul1(koszul1(x)))
+            end
+
+            if 1 ≤ R2x
+                @test koszul2(x + x2) == koszul2(x) + koszul2(x2)
+                @test koszul2(a * x) == a * koszul2(x)
+            end
+            if R1x + R1y ≤ D && 1 ≤ R2x && 1 ≤ R2y && R2x + R2y ≤ D && R2x + R2y ≤ D - 1
+                @test koszul2(x ∧ y) == koszul2(x) ∧ y + bitsign(R2x) * x ∧ koszul2(y)
+            end
+            if 2 ≤ R2x
+                @test iszero(koszul2(koszul2(x)))
+            end
+        end
+
+        # if D >= 1
+        #     Rz = rand(0:D)
+        #     p = rand(0:5)
+        #     function mkterm()
+        #         dims = rand(1:D, p)
+        #         powers = zeros(D)
+        #         for d in dims
+        #             powers[d] += 1
+        #         end
+        #         return Term{P,D,T}(SVector{D,Int}(powers), T(rand(-10:10)))
+        #     end
+        #     function mkpoly()
+        #         q = rand(0:5)
+        #         return Poly{P,D,T}(Term{P,D,T}[mkterm() for i in 1:q])
+        #     end
+        #     function mkform()
+        #         N = binomial(Val(D), Val(Rz))
+        #         return Form{D,Rz}(ntuple(_ -> mkpoly(), N))
+        #     end
+        #     z = mkform()
+        # 
+        #     # Douglas Arnold, Richard Falk, Ragnar Winther, "Finite
+        #     # element exterior calculus, homological techniques, and
+        #     # applications", Acta Numerica 15, 1-155 (2006),
+        #     # DOI:10.1017/S0962492906210018, eqn. (3.9)
+        #     if 1 <= Rz <= D - 1
+        #         # This holds only for homogenous polynomial forms,
+        #         # i.e. forms where all polynomials have the same
+        #         # degree `p`
+        #         if P ≡ Pow
+        #             @test deriv(koszul(z)) + koszul(deriv(z)) == (Rz + p) * z
+        #         end
+        #     end
+        # end
+
+        # if P ≡ Pow
+        #     @test iszero(integral(n)::Form{D,Rx})
+        #     if Rx <= D - 1
+        #         @test integral(x + x2) == integral(x) + integral(x2)
+        #         @test integral(a * x) == a * integral(x)
+        #     end
+        # end
+
+        @test iszero(n ⋅ x)
+
+        xx = x ⋅ x
+        xx::T
+        # @test isreal(xx)
+        @test xx == conj(xx)
+        if iszero(x)
+            @test xx == 0
         else
             @test real(xx) > 0
         end
@@ -640,7 +860,7 @@ function pc_length(D::Int, p::Int, R::Int)
     return binomial(p - R + D, p) * binomial(p, R)
 end
 
-@testset "Complexes P=$P D=$D T=$T p=$p" for P in [Pow], D in 0:Dmax, T in types(P), p in 1:max(2, 5 - D)
+@testset "Complexes P=$P D=$D T=$T p=$p" for P in [Pow], D in 0:min(Dmax, 5), T in types(P), p in 1:max(2, 5 - D)
     pc = polynomial_complex(P, Val(D), T, p)
     tpc = trimmed_polynomial_complex(P, Val(D), T, p)
     epc = extended_trimmed_polynomial_complex(P, Val(D), T, p)
