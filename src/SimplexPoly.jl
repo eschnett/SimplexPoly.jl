@@ -1653,31 +1653,31 @@ function quad_polynomial_double_complex(::Type{P}, ::Val{D}, ::Type{T}, p::Int) 
     return cc
 end
 
-# export trimmed_polynomial_double_complex
-# function trimmed_polynomial_double_complex(::Type{P}, ::Val{D}, ::Type{T}, p::Int) where {P,D,T}
-#     D::Int
-#     @assert 0 <= D
-#     @assert p >= -1
-# 
-#     cc = Dict{NTuple{2,Int},TensorBasis{P,D,R1,R2,T} where {R1,R2}}()
-# 
-#     for R1 in 0:D, R2 in 0:D
-#         if (R1, R2) == (0, 0)
-#             b = full_basis(TensorBasis{P,D,R1,R2,T}, p)
-#         else
-#             b = full_basis(TensorBasis{P,D,R1,R2,T}, max(-1, p - 1))
-#             if R1 + 1 <= D
-#                 b = b ⊕ koszul1(homogeneous_basis(TensorBasis{P,D,R1 + 1,R2,T}, p - 1))
-#             end
-#             if R2 + 1 <= D
-#                 b = b ⊕ koszul2(homogeneous_basis(TensorBasis{P,D,R1,R2 + 1,T}, p - 1))
-#             end
-#         end
-#         cc[(R1, R2)] = b::TensorBasis{P,D,R1,R2,T}
-#     end
-# 
-#     return cc
-# end
+export trimmed_polynomial_double_complex
+function trimmed_polynomial_double_complex(::Type{P}, ::Val{D}, ::Type{T}, p::Int) where {P,D,T}
+    D::Int
+    @assert 0 <= D
+    @assert p >= -1
+
+    cc = Dict{NTuple{2,Int},TensorBasis{P,D,R1,R2,T} where {R1,R2}}()
+
+    for R1 in 0:D, R2 in 0:D
+        if (R1, R2) == (0, 0)
+            b = full_basis(TensorBasis{P,D,R1,R2,T}, p)
+        else
+            b = full_basis(TensorBasis{P,D,R1,R2,T}, max(-1, p - 1))
+            if R1 + 1 <= D
+                b = b ⊕ koszul1(homogeneous_basis(TensorBasis{P,D,R1 + 1,R2,T}, p - 1))
+            end
+            if R2 + 1 <= D
+                b = b ⊕ koszul2(homogeneous_basis(TensorBasis{P,D,R1,R2 + 1,T}, p - 1))
+            end
+        end
+        cc[(R1, R2)] = b::TensorBasis{P,D,R1,R2,T}
+    end
+
+    return cc
+end
 
 export maximal_polynomial_double_complex
 """

@@ -405,7 +405,9 @@ maximum0(xs::SVector{N,T}) where {N,T} = maximum(xs)
     ################################################################################
     ################################################################################
 
-    @time @testset "Polynomial forms as vector space D=$D R=$R P=$P T=$T" for D in 0:Dmax, R in 0:D, P in ptypes(), T in types(P)
+    @time @testset "Polynomial forms as vector space D=$D R=$R P=$P T=$T" for D in 0:Dmax, R in 0:D, P in ptypes(),
+                                                                              T in types(P)
+
         for iter in 1:100
             n = zero(Form{D,R,Poly{P,D,T}})
             x = rand(Form{D,R,Poly{P,D,T}})
@@ -686,7 +688,9 @@ maximum0(xs::SVector{N,T}) where {N,T} = maximum(xs)
         end
     end
 
-    @time @testset "Derivatives of polynomial tensor forms P=$P D=$D T=$T" for P in ptypes(), D in 0:min(Dmax, 4), T in types(P)
+    @time @testset "Derivatives of polynomial tensor forms P=$P D=$D T=$T" for P in ptypes(), D in 0:min(Dmax, 4),
+                                                                               T in types(P)
+
         for iter in 1:100
             R1x = rand(0:D)
             R1y = rand(0:D)
@@ -1064,7 +1068,9 @@ maximum0(xs::SVector{N,T}) where {N,T} = maximum(xs)
         return binomial(p - R + D, p) * binomial(p, R)
     end
 
-    @time @testset "Complexes P=$P D=$D T=$T p=$p" for P in [Pow], D in 0:min(Dmax, 4), T in types(P), p in 1:max(2, 4 - D)
+    @time @testset "Complexes P=$P D=$D T=$T p=$p" for P in [Pow], D in 0:min(Dmax, 4), T in types(P),
+                                                       p in 1:max(2, 4 - D)
+
         pc = polynomial_complex(P, Val(D), T, p)
         tpc = trimmed_polynomial_complex(P, Val(D), T, p)
         epc = extended_trimmed_polynomial_complex(P, Val(D), T, p)
@@ -1122,9 +1128,7 @@ maximum0(xs::SVector{N,T}) where {N,T} = maximum(xs)
             if R < D
                 @test issubset(deriv(pc[R]), pc[R + 1])
                 @test issubset(deriv(tpc[R]), tpc[R + 1])
-                # This does not seem to hold
-                # This also means that epc is not actually a complex!
-                # @test issubset(deriv(epc[R]), epc[R + 1])
+                @test issubset(deriv(epc[R]), epc[R + 1])
                 @test issubset(deriv(mpc[R]), mpc[R + 1])
                 @test issubset(deriv(mqpc[R]), mqpc[R + 1])
             end
@@ -1156,47 +1160,42 @@ maximum0(xs::SVector{N,T}) where {N,T} = maximum(xs)
 
     ################################################################################
 
-    # function pdc_length(D::Int, p::Int, R1::Int, R2::Int)
-    #     @assert D ≥ 0 && p ≥ 1 && 0 ≤ R1 ≤ D && 0 ≤ R2 ≤ D
-    #     return binomial(p - (R1 + R2) + D, p) * binomial(p, R1) * binomial(p, R2)
-    # end
-
     @time @testset "Double complexes P=$P D=$D T=$T p=$p" for P in [Pow], D in 0:min(Dmax, 3), T in types(P), p in 1:max(2, 3 - D)
         pdc = polynomial_double_complex(P, Val(D), T, p)
         qpdc = quad_polynomial_double_complex(P, Val(D), T, p)
-        # tpdc = trimmed_polynomial_double_complex(P, Val(D), T, p)
+        tpdc = trimmed_polynomial_double_complex(P, Val(D), T, p)
         mpdc = maximal_polynomial_double_complex(P, Val(D), T, p)
         mqpdc = maximal_polynomial_double_complex(P, Val(D), T, p)
         @test Set(keys(pdc)) == Set((d1, d2) for d1 in 0:D, d2 in 0:D)
         @test Set(keys(qpdc)) == Set((d1, d2) for d1 in 0:D, d2 in 0:D)
-        # @test Set(keys(tpdc)) == Set((d1, d2) for d1 in 0:D, d2 in 0:D)
+        @test Set(keys(tpdc)) == Set((d1, d2) for d1 in 0:D, d2 in 0:D)
         @test Set(keys(mpdc)) == Set((d1, d2) for d1 in 0:D, d2 in 0:D)
         @test Set(keys(mqpdc)) == Set((d1, d2) for d1 in 0:D, d2 in 0:D)
 
         for R1 in 0:D, R2 in 0:D
             @test pdc[(R1, R2)] isa TensorBasis{P,D,R1,R2,T}
             @test qpdc[(R1, R2)] isa TensorBasis{P,D,R1,R2,T}
-            # @test tpdc[(R1, R2)] isa TensorBasis{P,D,R1,R2,T}
+            @test tpdc[(R1, R2)] isa TensorBasis{P,D,R1,R2,T}
             @test mpdc[(R1, R2)] isa TensorBasis{P,D,R1,R2,T}
             @test mqpdc[(R1, R2)] isa TensorBasis{P,D,R1,R2,T}
             test_basis(pdc[(R1, R2)])
             test_basis(qpdc[(R1, R2)])
-            # test_basis(tpdc[(R1, R2)])
+            test_basis(tpdc[(R1, R2)])
             test_basis(mpdc[(R1, R2)])
             test_basis(mqpdc[(R1, R2)])
             # @test length(pdc[(R1, R2)]) == pdc_length(D, p, R1, R2)
 
             if R1 < D
                 @test issubset(deriv1(pdc[(R1, R2)]), pdc[(R1 + 1, R2)])
-                # @test issubset(deriv1(qpdc[(R1, R2)]), qpdc[(R1 + 1, R2)])
-                # @test issubset(deriv1(tpdc[(R1, R2)]), tpdc[(R1 + 1, R2)])
+                #WRONG @test issubset(deriv1(qpdc[(R1, R2)]), qpdc[(R1 + 1, R2)])
+                @test issubset(deriv1(tpdc[(R1, R2)]), tpdc[(R1 + 1, R2)])
                 @test issubset(deriv1(mpdc[(R1, R2)]), mpdc[(R1 + 1, R2)])
                 @test issubset(deriv1(mqpdc[(R1, R2)]), mqpdc[(R1 + 1, R2)])
             end
             if R2 < D
                 @test issubset(deriv2(pdc[(R1, R2)]), pdc[(R1, R2 + 1)])
-                # @test issubset(deriv2(qpdc[(R1, R2)]), qpdc[(R1, R2 + 1)])
-                # @test issubset(deriv2(tpdc[(R1, R2)]), tpdc[(R1, R2 + 1)])
+                #WRONG @test issubset(deriv2(qpdc[(R1, R2)]), qpdc[(R1, R2 + 1)])
+                @test issubset(deriv2(tpdc[(R1, R2)]), tpdc[(R1, R2 + 1)])
                 @test issubset(deriv2(mpdc[(R1, R2)]), mpdc[(R1, R2 + 1)])
                 @test issubset(deriv2(mqpdc[(R1, R2)]), mqpdc[(R1, R2 + 1)])
             end
@@ -1209,23 +1208,23 @@ maximum0(xs::SVector{N,T}) where {N,T} = maximum(xs)
             # This can fail because `koszul[12]` do not generate the constant function
             if R1 > 0
                 @test issubset(koszul1(pdc[(R1, R2)]), pdc[(R1 - 1, R2)])
-                # @test issubset(koszul1(qpdc[(R1, R2)]), qpdc[(R1 - 1, R2)])
+                @test issubset(koszul1(qpdc[(R1, R2)]), qpdc[(R1 - 1, R2)])
                 # @test issubset(koszul1(tpdc[(R1, R2)]), tpdc[(R1 - 1, R2)])
                 # @test issubset(koszul1(mpdc[(R1, R2)]), mpdc[(R1 - 1, R2)])
             end
             if R2 > 0
                 @test issubset(koszul2(pdc[(R1, R2)]), pdc[(R1, R2 - 1)])
-                # @test issubset(koszul2(qpdc[(R1, R2)]), qpdc[(R1, R2 - 1)])
+                @test issubset(koszul2(qpdc[(R1, R2)]), qpdc[(R1, R2 - 1)])
                 # @test issubset(koszul2(tpdc[(R1, R2)]), tpdc[(R1, R2 - 1)])
                 # @test issubset(koszul2(mpdc[(R1, R2)]), mpdc[(R1, R2 - 1)])
             end
         end
     end
 
-    @time @testset "Double complexes P=$P D=$D T=$T p=$p" for P in [Pow],
-                                                              D in 0:min(Dmax, 3),
-                                                              T in bigtypes(P),
-                                                              p in 1:max(2, 3 - D)
+    @time @testset "Special double complexes P=$P D=$D T=$T p=$p" for P in [Pow],
+                                                                      D in 0:min(Dmax, 3),
+                                                                      T in bigtypes(P),
+                                                                      p in 1:max(2, 3 - D)
         # pdc = polynomial_double_complex(P, Val(D), T, p)
         # pdc = maximal_polynomial_double_complex(P, Val(D), T, p; pnorm=sum)
         mspdc = maximal_polynomial_double_complex(P, Val(D), T, p; pnorm=sum)
@@ -1238,7 +1237,6 @@ maximum0(xs::SVector{N,T}) where {N,T} = maximum(xs)
             @test mqpdc[(R1, R2)] isa TensorBasis{P,D,R1,R2,T}
             test_basis(mspdc[(R1, R2)])
             test_basis(mqpdc[(R1, R2)])
-            # @test length(mspdc[(R1, R2)]) == mspdc_length(D, p, R1, R2)
 
             if R1 < D
                 @test deriv1(mspdc[(R1, R2)]) ⊆ mspdc[(R1 + 1, R2)]
@@ -1250,16 +1248,14 @@ maximum0(xs::SVector{N,T}) where {N,T} = maximum(xs)
             end
             # This property does not seem to hold
             # @test ⋆mspdc[(R1, R2)] == mspdc[(D - R1, D - R2)]
-            # @test ⋆mqpdc[(R1, R2)] == mqpdc[(D - R1, D - R2)]
+            @test ⋆mqpdc[(R1, R2)] == mqpdc[(D - R1, D - R2)]
             if R1 > 0
                 @test ⋆deriv1(⋆mspdc[(R1, R2)]) ⊆ mspdc[(R1 - 1, R2)]
-                # This property does not seem to hold for mqdpc
-                # @test issubset(⋆deriv1(⋆mqpdc[(R1, R2)]), mqpdc[(R1 - 1, R2)])
+                @test ⋆deriv1(⋆mqpdc[(R1, R2)]) ⊆ mqpdc[(R1 - 1, R2)]
             end
             if R2 > 0
                 @test ⋆deriv2(⋆mspdc[(R1, R2)]) ⊆ mspdc[(R1, R2 - 1)]
-                # This property does not seem to hold for mqdpc
-                # @test issubset(⋆deriv2(⋆mqpdc[(R1, R2)]), mqpdc[(R1, R2 - 1)])
+                @test ⋆deriv2(⋆mqpdc[(R1, R2)]) ⊆ mqpdc[(R1, R2 - 1)]
             end
             # This can fail because `koszul[12]` do not generate the constant function
             # if R1 > 0
