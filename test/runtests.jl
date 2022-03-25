@@ -906,7 +906,7 @@ maximum0(xs::SVector{N,T}) where {N,T} = maximum(xs)
     @time @testset "Bases P=$P D=$D R=$R T=$T p=$p" for P in ptypes(),
                                                         D in 0:min(Dmax, 3),
                                                         R in 0:D,
-                                                        T in types(P),
+                                                        T in bigtypes(P),
                                                         p in 0:max(2, 5 - D)
 
         z = zero(Basis{P,D,R,T})
@@ -956,7 +956,7 @@ maximum0(xs::SVector{N,T}) where {N,T} = maximum(xs)
     @time @testset "Special bases P=$P D=$D R=$R T=$T p=$p" for P in ptypes(),
                                                                 D in 0:Dmax,
                                                                 R in 0:D,
-                                                                T in types(P),
+                                                                T in bigtypes(P),
                                                                 p in 0:max(2, 5 - D)
         # feec-icerm-lecture3, page 23
         # n = D
