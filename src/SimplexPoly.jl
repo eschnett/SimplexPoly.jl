@@ -1040,7 +1040,12 @@ Base.in(form::Form{D,R,<:Poly{P,D}}, basis::Basis{P,D,R}) where {P,D,R} = iszero
 
 Base.issubset(basis1::Basis{P,D,R}, basis2::Basis{P,D,R}) where {P,D,R} = all(f in basis2 for f in basis1.forms)
 
-Base.isdisjoint(basis1::Basis{P,D,R}, basis2::Basis{P,D,R}) where {P,D,R} = isempty(basis1 ∩ basis2)
+if VERSION ≥ v"1.5"
+    Base.isdisjoint(basis1::Basis{P,D,R}, basis2::Basis{P,D,R}) where {P,D,R} = isempty(basis1 ∩ basis2)
+else
+    export isdisjoint
+    isdisjoint(basis1::Basis{P,D,R}, basis2::Basis{P,D,R}) where {P,D,R} = isempty(basis1 ∩ basis2)
+end
 
 "Complement of basis1 with respect to basis2"
 function complement(basis1::Basis{P,D,R}, basis2::Basis{P,D,R}) where {P,D,R}
@@ -1300,7 +1305,11 @@ function Base.issubset(basis1::TensorBasis{P,D,R1,R2}, basis2::TensorBasis{P,D,R
     return all(f in basis2 for f in basis1.forms)
 end
 
-Base.isdisjoint(basis1::TensorBasis{P,D,R1,R2}, basis2::TensorBasis{P,D,R1,R2}) where {P,D,R1,R2} = isempty(basis1 ∩ basis2)
+if VERSION ≥ v"1.5"
+    Base.isdisjoint(basis1::TensorBasis{P,D,R1,R2}, basis2::TensorBasis{P,D,R1,R2}) where {P,D,R1,R2} = isempty(basis1 ∩ basis2)
+else
+    isdisjoint(basis1::TensorBasis{P,D,R1,R2}, basis2::TensorBasis{P,D,R1,R2}) where {P,D,R1,R2} = isempty(basis1 ∩ basis2)
+end
 
 "Complement of basis1 with respect to basis2"
 function complement(basis1::TensorBasis{P,D,R1,R2}, basis2::TensorBasis{P,D,R1,R2}) where {P,D,R1,R2}
