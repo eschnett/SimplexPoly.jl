@@ -58,6 +58,32 @@ function Base.show(io::IO, ::MIME"text/plain", x::Term{P,D,T}) where {P,D,T}
     return nothing
 end
 
+function Base.show(io::IO, ::MIME"text/latex", x::Term{Pow,D}) where {D}
+    if iszero(x)
+        print(io, 0)
+    else
+        if !isone(x.coeff) || all(x.powers[d] == 0 for d in 1:D)
+            print(io, x.coeff)
+        else
+            for d in 1:D
+                if x.powers[d] == 0
+                    # print nothiing
+                else
+                    print(io, "xyzuvw"[d:d])
+                    if x.powers[d] == 1
+                        # omit exponent
+                    elseif x.powers[d] in 0:9
+                        print(io, "^", x.powers[d])
+                    else
+                        print(io, "^{", x.powers[d], "}")
+                    end
+                end
+            end
+        end
+    end
+    return nothing
+end
+
 Base.:(==)(x::Term{P,D}, y::Term{P,D}) where {P,D} = x.powers == y.powers && x.coeff == y.coeff
 
 Base.isequal(x::Term, y::Term) = isequal((ptype(x), x.powers, x.coeff), (ptype(y), y.powers, y.coeff))
@@ -234,6 +260,22 @@ function Base.show(io::IO, mime::MIME"text/plain", p::Poly{P,D,T}) where {P,D,T}
     end
     # print(io, "]")
     print(io, ")")
+    return nothing
+end
+
+function Base.show(io::IO, mime::MIME"text/latex", p::Poly)
+    if isempty(p.terms)
+        print(io, 0)
+    else
+        length(p.terms) > 1 && print(io, "(")
+        needsep = false
+        for (i, term) in enumerate(p.terms)
+            needsep && print(io, " + ")
+            needsep = true
+            show(io, mime, term)
+        end
+        length(p.terms) > 1 && print(io, ")")
+    end
     return nothing
 end
 
@@ -963,6 +1005,17 @@ function Base.show(io::IO, mime::MIME"text/plain", b::Basis{P,D,R,T}) where {P,D
     return nothing
 end
 
+function Base.show(io::IO, mime::MIME"text/latex", b::Basis)
+    println(io, "\\begin{matrix}")
+    for form in b.forms
+        print(io, "    ")
+        show(io, mime, form)
+        println(io, " \\\\")
+    end
+    println(io, "\\end{matrix}")
+    return nothing
+end
+
 function Base.:(==)(b1::Basis{P,D,R}, b2::Basis{P,D,R}) where {P,D,R}
     # return b1.forms == b2.forms
     # Fast paths
@@ -1255,6 +1308,17 @@ function Base.show(io::IO, mime::MIME"text/plain", b::TensorBasis{P,D,R1,R2,T}) 
         show(IOContext(io, :compact => true, :typeinfo => TensorForm{D,R1,R2,Poly{P,D,T}}), mime, form)
     end
     print(io, "]")
+    return nothing
+end
+
+function Base.show(io::IO, mime::MIME"text/latex", b::TensorBasis)
+    println(io, "\\begin{matrix}")
+    for form in b.forms
+        print(io, "    ")
+        show(io, mime, form)
+        println(io, " \\\\")
+    end
+    println(io, "\\end{matrix}")
     return nothing
 end
 
