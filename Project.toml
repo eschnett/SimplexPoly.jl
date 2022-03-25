@@ -1,7 +1,7 @@
 name = "SimplexPoly"
 uuid = "777a8b24-f29b-463a-92de-bae7e9c19588"
 authors = ["Erik Schnetter <schnetter@gmail.com>"]
-version = "2.0.0"
+version = "2.1.0"
 
 [deps]
 ComputedFieldTypes = "459fdd68-db75-56b8-8c15-d717a790f88e"
