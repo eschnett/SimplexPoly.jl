@@ -1649,33 +1649,40 @@ function maximal_polynomial_complex(::Type{P}, ::Val{D}, ::Type{T}, p::Int; pnor
     cc = Dict{Int,Basis{P,D,R,T} where {R}}()
 
     for R in 0:D
+        # The `dom` basis elements have a nonzero derivative, which are
+        # exactly the `cod` basis element of the next higher rank. 
+
         # All polynomials of order `p-1`, and all polynomials that can
         # be reached from derivatives starting from order up to `p`.
         # We always want these.
-        if R == 0
-            balways = make_basis(Basis{P,D,R,T}, p, i -> pnorm(i) <= p)
-        else
-            p1 = max(-1, p - 1)
-            balways = make_basis(Basis{P,D,R,T}, p1, i -> pnorm(i) <= p1)
-            if R > 0
-                balways = balways ⊕ deriv(make_basis(Basis{P,D,R - 1,T}, p, i -> pnorm(i) <= p))
-            end
-        end
-        # All polynomials that can be reached from derivatives
-        # starting from order `p+1`. We never want these.
-        bnever = Basis{P,D,R,T}(fulltype(Form{D,R,Poly{P,D,T}})[])
+        codp0 = zero(Basis{P,D,R,T})
+        codp1 = zero(Basis{P,D,R,T})
         if R > 0
-            bnever = bnever ⊕ deriv(make_basis(Basis{P,D,R - 1,T}, p + 1, i -> pnorm(i) == p + 1))
+            basisp0 = cc[R - 1]
+            codp0 = codp0 ∪ deriv(basisp0)
+            basisp1 = make_basis(Basis{P,D,R - 1,T}, p + 1, i -> pnorm(i) == p + 1)
+            codp1 = codp1 ∪ deriv(basisp1)
         end
-        bnever = bnever ⊖ balways
-        # # These two spaces should be distinct
-        # @assert balways ⊖ bnever == balways
+        @assert isdisjoint(codp0, codp1)
+        if R < D
+            @assert iszero(deriv(codp0))
+            @assert iszero(deriv(codp1))
+        end
+
         # All polynomials of order `p`. We want these only if they
-        # don't have a potential of order `p+1`.
+        # don't have a potential that outside our bases.
         bmaybe = make_basis(Basis{P,D,R,T}, p, i -> pnorm(i) <= p)
-        # Final space
-        b = balways ⊕ (bmaybe ⊖ bnever)
-        cc[R] = b::Basis{P,D,R,T}
+        domp0 = setdiff(bmaybe, codp1)
+        domp1 = make_basis(Basis{P,D,R,T}, p + 1, i -> pnorm(i) == p + 1)
+        @assert isdisjoint(domp0, domp1)
+
+        basisp0 = codp0 ∪ domp0
+
+        cc[R] = basisp0
+
+        if R > 0
+            @assert deriv(cc[R - 1]) ⊆ cc[R]
+        end
     end
 
     return cc
@@ -1771,13 +1778,13 @@ function maximal_polynomial_double_complex(::Type{P}, ::Val{D}, ::Type{T}, p::In
         if R1 > 0
             basisp0 = cc[(R1 - 1, R2)]
             cod1p0 = cod1p0 ∪ deriv1(basisp0)
-            basisp1 = make_basis(TensorBasis{P,D,R1 - 1,R2,T}, p, i -> pnorm(i) == p + 1)
+            basisp1 = make_basis(TensorBasis{P,D,R1 - 1,R2,T}, p + 1, i -> pnorm(i) == p + 1)
             cod1p1 = cod1p1 ∪ deriv1(basisp1)
         end
         if R2 > 0
             basisp0 = cc[(R1, R2 - 1)]
             cod2p0 = cod2p0 ∪ deriv2(basisp0)
-            basisp1 = make_basis(TensorBasis{P,D,R1,R2 - 1,T}, p, i -> pnorm(i) == p + 1)
+            basisp1 = make_basis(TensorBasis{P,D,R1,R2 - 1,T}, p + 1, i -> pnorm(i) == p + 1)
             cod2p1 = cod2p1 ∪ deriv2(basisp1)
         end
         @assert isdisjoint(cod1p0, cod1p1)
@@ -1797,7 +1804,7 @@ function maximal_polynomial_double_complex(::Type{P}, ::Val{D}, ::Type{T}, p::In
         # don't have a potential that outside our bases.
         bmaybe = make_basis(TensorBasis{P,D,R1,R2,T}, p, i -> pnorm(i) <= p)
         domp0 = setdiff(bmaybe, cod1p1, cod2p1)
-        domp1 = make_basis(TensorBasis{P,D,R1,R2,T}, p, i -> pnorm(i) == p + 1)
+        domp1 = make_basis(TensorBasis{P,D,R1,R2,T}, p + 1, i -> pnorm(i) == p + 1)
         @assert isdisjoint(domp0, domp1)
 
         basisp0 = cod1p0 ∪ cod2p0 ∪ domp0
