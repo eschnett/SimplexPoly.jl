@@ -1,7 +1,7 @@
 name = "SimplexPoly"
 uuid = "777a8b24-f29b-463a-92de-bae7e9c19588"
 authors = ["Erik Schnetter <schnetter@gmail.com>"]
-version = "2.0.0"
+version = "2.1.0"
 
 [deps]
 ComputedFieldTypes = "459fdd68-db75-56b8-8c15-d717a790f88e"
@@ -13,7 +13,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-ComputedFieldTypes = "0.1.0"
-DifferentialForms = "2.7.0"
-StaticArrays = "0.12.4"
+ComputedFieldTypes = "0.1.0, 1.0.0"
+DifferentialForms = "2.12.0"
+StaticArrays = "0.12.4, 1.0.0"
 julia = "1.4"
